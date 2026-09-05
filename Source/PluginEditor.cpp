@@ -10,6 +10,22 @@ BDCPluginAudioProcessorEditor::BDCPluginAudioProcessorEditor (BDCPluginAudioProc
     logoLabel.setJustificationType (juce::Justification::centredLeft);
     addAndMakeVisible (logoLabel);
 
+    presetCaption.setText ("PRESET:", juce::dontSendNotification);
+    presetCaption.setFont (juce::Font (12.0f));
+    addAndMakeVisible (presetCaption);
+
+    for (int i = 0; i < processorRef.getNumPrograms(); ++i)
+        presetBox.addItem (processorRef.getProgramName (i), i + 1);
+    presetBox.setSelectedItemIndex (processorRef.getCurrentProgram(), juce::dontSendNotification);
+    presetBox.setTooltip ("Factory presets - a starting point to tweak from.");
+    presetBox.onChange = [this]
+    {
+        auto index = presetBox.getSelectedItemIndex();
+        if (index >= 0)
+            processorRef.setCurrentProgram (index);
+    };
+    addAndMakeVisible (presetBox);
+
     tunerLabel.setText ("--", juce::dontSendNotification);
     tunerLabel.setFont (juce::Font (22.0f));
     tunerLabel.setJustificationType (juce::Justification::centred);
@@ -118,6 +134,11 @@ void BDCPluginAudioProcessorEditor::timerCallback()
         tunerLabel.setText ("--", juce::dontSendNotification);
         tunerLabel.setColour (juce::Label::textColourId, BDCLookAndFeel::text);
     }
+
+    // Keep the preset box in sync if the program changes from outside the
+    // combo box itself (e.g. the host's own preset menu, or session reload).
+    if (presetBox.getSelectedItemIndex() != processorRef.getCurrentProgram())
+        presetBox.setSelectedItemIndex (processorRef.getCurrentProgram(), juce::dontSendNotification);
 }
 
 void BDCPluginAudioProcessorEditor::setupHeroBar (HeroBar& hb, const juce::String& labelText,
@@ -203,7 +224,7 @@ void BDCPluginAudioProcessorEditor::resized()
 {
     auto area = getLocalBounds().reduced (24);
 
-    auto header = area.removeFromTop (56);
+    auto header = area.removeFromTop (40);
     logoLabel.setBounds (header.removeFromLeft (180));
 
     auto controls = header.removeFromRight (300);
@@ -216,7 +237,13 @@ void BDCPluginAudioProcessorEditor::resized()
 
     tunerLabel.setBounds (header);
 
-    area.removeFromTop (20);
+    area.removeFromTop (10);
+
+    auto presetRow = area.removeFromTop (26);
+    presetCaption.setBounds (presetRow.removeFromLeft (60));
+    presetBox.setBounds (presetRow.removeFromLeft (240));
+
+    area.removeFromTop (14);
 
     auto footer = area.removeFromBottom (78);
     sustainButton.setBounds (footer.removeFromRight (140).withSizeKeepingCentre (140, 32));

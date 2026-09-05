@@ -41,6 +41,7 @@ target_sources(BDCPlugin
     PRIVATE
         Source/PluginProcessor.cpp
         Source/PluginEditor.cpp
+        Source/Presets.cpp
         Source/UI/BDCLookAndFeel.cpp
         Source/DSP/CircularBuffer.cpp
         Source/DSP/InputActivityDetector.cpp

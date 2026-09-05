@@ -63,6 +63,9 @@ private:
 
     juce::Label logoLabel;
 
+    juce::Label presetCaption;
+    juce::ComboBox presetBox;
+
     juce::Label tunerLabel;
 
     juce::Label scaleCaption, rootCaption;

@@ -1,5 +1,6 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include "Presets.h"
 
 namespace ParamIDs
 {
@@ -84,6 +85,35 @@ BDCPluginAudioProcessor::BDCPluginAudioProcessor()
 }
 
 BDCPluginAudioProcessor::~BDCPluginAudioProcessor() = default;
+
+int BDCPluginAudioProcessor::getNumPrograms()
+{
+    return (int) getFactoryPresets().size();
+}
+
+int BDCPluginAudioProcessor::getCurrentProgram()
+{
+    return currentProgramIndex;
+}
+
+void BDCPluginAudioProcessor::setCurrentProgram (int index)
+{
+    const auto& presets = getFactoryPresets();
+    if (index < 0 || index >= (int) presets.size())
+        return;
+
+    currentProgramIndex = index;
+    applyFactoryPreset (apvts, presets[(size_t) index].values);
+}
+
+const juce::String BDCPluginAudioProcessor::getProgramName (int index)
+{
+    const auto& presets = getFactoryPresets();
+    if (index < 0 || index >= (int) presets.size())
+        return {};
+
+    return presets[(size_t) index].name;
+}
 
 juce::AudioProcessorValueTreeState::ParameterLayout BDCPluginAudioProcessor::createParameterLayout()
 {

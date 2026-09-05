@@ -31,10 +31,12 @@ public:
     bool isMidiEffect() const override { return false; }
     double getTailLengthSeconds() const override { return 2.0; }
 
-    int getNumPrograms() override { return 1; }
-    int getCurrentProgram() override { return 0; }
-    void setCurrentProgram (int) override {}
-    const juce::String getProgramName (int) override { return {}; }
+    // Factory presets, exposed as host "programs" so DAW preset menus can
+    // browse them (see Presets.h/.cpp for the actual data).
+    int getNumPrograms() override;
+    int getCurrentProgram() override;
+    void setCurrentProgram (int index) override;
+    const juce::String getProgramName (int index) override;
     void changeProgramName (int, const juce::String&) override {}
 
     void getStateInformation (juce::MemoryBlock& destData) override;
@@ -103,6 +105,8 @@ private:
     // Latches true the first time real audio is played in; generation stays
     // silent until then, so the plugin never generates out of nothing.
     bool hasBeenPrimed = false;
+
+    int currentProgramIndex = 0;
 
     juce::AudioBuffer<float> generatedScratch;
 

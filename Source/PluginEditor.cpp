@@ -182,6 +182,32 @@ BDCPluginAudioProcessorEditor::BDCPluginAudioProcessorEditor (BDCPluginAudioProc
     addAndMakeVisible (sustainButton);
     sustainAttachment = std::make_unique<ButtonAttachment> (processorRef.apvts, "sustainOnSilence", sustainButton);
 
+    grabButton.setClickingTogglesState (true);
+    grabButton.setTooltip (
+        "Freezes the generator's memory right now, holding onto whatever's been captured so far - independent "
+        "of Sustain, and regardless of whether you keep playing. Click again to let it start listening live again.");
+    grabButton.onClick = [this]
+    {
+        const bool frozen = grabButton.getToggleState();
+        processorRef.setGrabFrozen (frozen);
+        grabButton.setButtonText (frozen ? "GRABBED" : "GRAB");
+    };
+    addAndMakeVisible (grabButton);
+
+    inputMeterLabel.setText ("IN", juce::dontSendNotification);
+    inputMeterLabel.setJustificationType (juce::Justification::centred);
+    addAndMakeVisible (inputMeterLabel);
+    inputMeter.setRange (0.0, 1.0);
+    inputMeter.setInterceptsMouseClicks (false, false);
+    addAndMakeVisible (inputMeter);
+
+    outputMeterLabel.setText ("OUT", juce::dontSendNotification);
+    outputMeterLabel.setJustificationType (juce::Justification::centred);
+    addAndMakeVisible (outputMeterLabel);
+    outputMeter.setRange (0.0, 1.0);
+    outputMeter.setInterceptsMouseClicks (false, false);
+    addAndMakeVisible (outputMeter);
+
     setResizable (true, true);
     setSize (kDesignWidth, kDesignHeightCompact);
     setAdvancedVisible (false); // starts collapsed to a lean default view; sets aspect ratio + resize limits too
@@ -242,6 +268,17 @@ void BDCPluginAudioProcessorEditor::timerCallback()
         scaleBox.setSelectedItemIndex (processorRef.getManualScaleIndex(), juce::dontSendNotification);
     }
     wasKeyFollowOn = keyFollowOn;
+
+    // Level meters: map linear peak amplitude to a 0-1 display value over a
+    // -48dB..0dB window, so the bars actually move across their useful
+    // range at typical playing levels instead of sitting near the bottom.
+    auto levelToDisplay = [] (float linearPeak)
+    {
+        const float db = juce::Decibels::gainToDecibels (linearPeak, -48.0f);
+        return juce::jlimit (0.0f, 1.0f, (db + 48.0f) / 48.0f);
+    };
+    inputMeter.setValue (levelToDisplay (processorRef.getInputLevel()), juce::dontSendNotification);
+    outputMeter.setValue (levelToDisplay (processorRef.getOutputLevel()), juce::dontSendNotification);
 }
 
 void BDCPluginAudioProcessorEditor::setupHeroBar (HeroBar& hb, const juce::String& labelText,
@@ -411,7 +448,25 @@ void BDCPluginAudioProcessorEditor::resized()
         k->valueLabel.setFont (SF (kKnobValueFontSize));
     }
 
-    auto area = getLocalBounds().reduced (S (24));
+    inputMeterLabel.setFont (SF (kKnobCaptionFontSize));
+    outputMeterLabel.setFont (SF (kKnobCaptionFontSize));
+
+    // Input/output meters live in slim columns right at the window edges,
+    // outside the margin the rest of the UI is laid out within - carved off
+    // first so `area` below is unaffected by their presence either mode.
+    auto windowArea = getLocalBounds();
+    auto inputMeterCol = windowArea.removeFromLeft (S (28)).reduced (0, S (24));
+    auto outputMeterCol = windowArea.removeFromRight (S (28)).reduced (0, S (24));
+
+    inputMeterLabel.setBounds (inputMeterCol.removeFromTop (S (16)));
+    inputMeterCol.removeFromTop (S (6));
+    inputMeter.setBounds (inputMeterCol.withSizeKeepingCentre (juce::jmin (inputMeterCol.getWidth(), S (14)), inputMeterCol.getHeight()));
+
+    outputMeterLabel.setBounds (outputMeterCol.removeFromTop (S (16)));
+    outputMeterCol.removeFromTop (S (6));
+    outputMeter.setBounds (outputMeterCol.withSizeKeepingCentre (juce::jmin (outputMeterCol.getWidth(), S (14)), outputMeterCol.getHeight()));
+
+    auto area = windowArea.reduced (S (24));
 
     auto header = area.removeFromTop (S (40));
     logoLabel.setBounds (header.removeFromLeft (S (180)));
@@ -441,9 +496,12 @@ void BDCPluginAudioProcessorEditor::resized()
     footerDividerTop = footer.getY() + S (4);
     footerDividerBottom = footer.getBottom() - S (4);
 
-    sustainButton.setBounds (footer.removeFromRight (S (140)).withSizeKeepingCentre (S (140), S (32)));
+    auto performanceRow = footer.removeFromRight (S (238));
+    grabButton.setBounds (performanceRow.removeFromLeft (S (90)).withSizeKeepingCentre (S (90), S (32)));
+    performanceRow.removeFromLeft (S (8));
+    sustainButton.setBounds (performanceRow.withSizeKeepingCentre (S (140), S (32)));
     footer.removeFromRight (S (16) / 2);
-    footerDividerX[1] = footer.getRight(); // Sustain | tone macros
+    footerDividerX[1] = footer.getRight(); // Grab/Sustain | tone macros
     footer.removeFromRight (S (16) / 2);
 
     auto tapeSlot = footer.removeFromRight (S (72));

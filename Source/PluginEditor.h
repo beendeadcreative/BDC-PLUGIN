@@ -130,6 +130,16 @@ private:
     juce::TextButton sustainButton { "SUSTAIN" };
     std::unique_ptr<ButtonAttachment> sustainAttachment;
 
+    // Grab isn't a saved parameter (see PluginProcessor::setGrabFrozen) so
+    // it's wired by hand rather than through an APVTS ButtonAttachment.
+    juce::TextButton grabButton { "GRAB" };
+
+    // Live input/output level meters - plain non-interactive bar sliders
+    // (same visual style as the hero bars) updated from timerCallback().
+    juce::Label inputMeterLabel, outputMeterLabel;
+    juce::Slider inputMeter { juce::Slider::LinearBarVertical, juce::Slider::NoTextBox };
+    juce::Slider outputMeter { juce::Slider::LinearBarVertical, juce::Slider::NoTextBox };
+
     // Thin divider lines drawn in paint() to visually separate the four
     // effect columns (Grain/Delay/Chorus/Rotary) and the footer's control
     // clusters (Output / tone macros / Sustain), purely for scanability -

@@ -60,6 +60,21 @@ public:
     int getManualRootIndex() const noexcept { return rootNoteParam->getIndex(); }
     int getManualScaleIndex() const noexcept { return scaleTypeParam->getIndex(); }
 
+    // Grab: a manual, momentary override of the capture buffer, driven by
+    // the editor's GRAB button rather than a saved parameter - freezing a
+    // slice of audio history isn't something a saved session should recall.
+    // While on, the capture buffer stops being overwritten no matter what
+    // Sustain When Silent is set to or whether you keep playing, so you can
+    // hold onto a specific passage on demand instead of only when it goes
+    // quiet; turning it back off resumes normal capture immediately.
+    void setGrabFrozen (bool frozen) noexcept { grabFrozen.store (frozen, std::memory_order_relaxed); }
+    bool isGrabFrozen() const noexcept { return grabFrozen.load (std::memory_order_relaxed); }
+
+    // Live input/output level meters, polled by the editor's Timer. Linear
+    // peak amplitude with a ~400ms release, updated once per audio block.
+    float getInputLevel() const noexcept { return inputLevel.load (std::memory_order_relaxed); }
+    float getOutputLevel() const noexcept { return outputLevel.load (std::memory_order_relaxed); }
+
     juce::AudioProcessorValueTreeState apvts;
 
 private:
@@ -123,6 +138,10 @@ private:
     // Latches true the first time real audio is played in; generation stays
     // silent until then, so the plugin never generates out of nothing.
     bool hasBeenPrimed = false;
+
+    std::atomic<bool> grabFrozen { false };
+    std::atomic<float> inputLevel { 0.0f };
+    std::atomic<float> outputLevel { 0.0f };
 
     int currentProgramIndex = 0;
 

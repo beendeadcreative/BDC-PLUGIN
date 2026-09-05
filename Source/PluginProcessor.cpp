@@ -53,6 +53,25 @@ namespace TempoSync
     static const juce::StringArray multiplierChoices { "/4", "/2", "x1", "x2", "x4" };
 }
 
+namespace
+{
+    // Simple peak meter with an instant attack and a ~400ms release, so the
+    // UI reads a natural falling level rather than a per-block flicker.
+    void updateLevelMeter (std::atomic<float>& level, const juce::AudioBuffer<float>& buffer,
+                            int numSamples, double sampleRate)
+    {
+        float peak = 0.0f;
+        for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
+            peak = juce::jmax (peak, buffer.getMagnitude (ch, 0, numSamples));
+
+        constexpr float releaseSeconds = 0.4f;
+        const float decay = std::pow (0.001f, (float) numSamples / (releaseSeconds * (float) sampleRate));
+
+        const float previous = level.load (std::memory_order_relaxed);
+        level.store (juce::jmax (peak, previous * decay), std::memory_order_relaxed);
+    }
+}
+
 BDCPluginAudioProcessor::BDCPluginAudioProcessor()
     : AudioProcessor (BusesProperties()
                         .withInput  ("Input",  juce::AudioChannelSet::stereo(), true)
@@ -363,6 +382,8 @@ void BDCPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
     for (int ch = 0; ch < numChannels; ++ch)
         masterDryScratch.copyFrom (ch, 0, buffer, ch, 0, numSamples);
 
+    updateLevelMeter (inputLevel, masterDryScratch, numSamples, getSampleRate());
+
     // --- 1. Is anything actually being played right now? -------------------
     const bool inputActive = inputActivityDetector.updateAndIsActive (buffer, numSamples);
     if (inputActive)
@@ -388,7 +409,10 @@ void BDCPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
     // silent: if "Sustain When Silent" is on, freeze the buffer (stop
     // overwriting it) so generation keeps drawing on what was actually
     // played; if off, silence flows in like normal and generation fades out.
-    if (inputActive || ! sustainOnSilenceParam->get())
+    // Grab overrides all of that: while held, the buffer never gets
+    // overwritten no matter what's playing, so a specific passage can be
+    // captured and held on demand rather than only on silence.
+    if (! grabFrozen.load (std::memory_order_relaxed) && (inputActive || ! sustainOnSilenceParam->get()))
         captureBuffer.write (buffer);
 
     // --- 3. Generative granulator: turns captured material into new phrases
@@ -459,6 +483,8 @@ void BDCPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
 
     // --- 7. Output trim ------------------------------------------------
     buffer.applyGain (juce::Decibels::decibelsToGain (outputGainDbParam->load()));
+
+    updateLevelMeter (outputLevel, buffer, numSamples, getSampleRate());
 }
 
 juce::AudioProcessorEditor* BDCPluginAudioProcessor::createEditor()

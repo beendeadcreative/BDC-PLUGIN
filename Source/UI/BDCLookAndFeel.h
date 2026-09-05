@@ -3,9 +3,10 @@
 #include <JuceHeader.h>
 
 // Flat, poster-style look - bright pink background, deep plum bars, pale
-// pink-lavender type - matching the BDC reference mockup's colorway. No
-// gradients, no bevels, no skeuomorphism. Vertical "bar" sliders render as
-// solid blocks; rotary knobs render as a flat stroked arc.
+// pink-lavender type - matching the BDC reference mockup's colorway, set in
+// the brand's uploaded TAYLennon typeface. No gradients, no bevels, no
+// skeuomorphism. Vertical "bar" sliders render as solid blocks; rotary
+// knobs render as a flat stroked arc.
 class BDCLookAndFeel : public juce::LookAndFeel_V4
 {
 public:
@@ -25,6 +26,7 @@ public:
     juce::Font getComboBoxFont (juce::ComboBox&) override;
     juce::Font getTextButtonFont (juce::TextButton&, int buttonHeight) override;
     juce::Font getLabelFont (juce::Label&) override;
+    juce::Font getPopupMenuFont() override;
 
     static juce::Font trackedFont (float height, bool bold = true);
 

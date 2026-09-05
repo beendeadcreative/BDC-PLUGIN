@@ -32,6 +32,11 @@ juce_add_plugin(BDCPlugin
 
 juce_generate_juce_header(BDCPlugin)
 
+juce_add_binary_data(BDCPluginFonts
+    SOURCES
+        Resources/TAYLennon-Regular.otf
+)
+
 target_sources(BDCPlugin
     PRIVATE
         Source/PluginProcessor.cpp
@@ -59,6 +64,7 @@ target_link_libraries(BDCPlugin
     PRIVATE
         juce::juce_audio_utils
         juce::juce_dsp
+        BDCPluginFonts
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags

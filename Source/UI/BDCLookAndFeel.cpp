@@ -1,13 +1,27 @@
 #include "BDCLookAndFeel.h"
+#include <BinaryData.h>
 
 const juce::Colour BDCLookAndFeel::background { 0xffec84d6 }; // bright orchid pink
 const juce::Colour BDCLookAndFeel::ink        { 0xff8a3568 }; // deep plum
 const juce::Colour BDCLookAndFeel::track      { 0xffd699c6 }; // soft mid pink
 const juce::Colour BDCLookAndFeel::text       { 0xfff8e6f4 }; // pale pink-lavender
 
+namespace
+{
+    juce::Typeface::Ptr getBrandTypeface()
+    {
+        static juce::Typeface::Ptr typeface = juce::Typeface::createSystemTypefaceFor (
+            BinaryData::TAYLennonRegular_otf, (size_t) BinaryData::TAYLennonRegular_otfSize);
+        return typeface;
+    }
+}
+
 juce::Font BDCLookAndFeel::trackedFont (float height, bool bold)
 {
-    juce::Font f (height, bold ? juce::Font::bold : juce::Font::plain);
+    juce::Font f (getBrandTypeface());
+    f.setHeight (height);
+    if (bold)
+        f.setBold (true); // synthetic bold - the uploaded font is a single Regular weight
     f.setExtraKerningFactor (0.07f);
     return f;
 }
@@ -127,4 +141,9 @@ juce::Font BDCLookAndFeel::getTextButtonFont (juce::TextButton&, int buttonHeigh
 juce::Font BDCLookAndFeel::getLabelFont (juce::Label& label)
 {
     return trackedFont (label.getFont().getHeight());
+}
+
+juce::Font BDCLookAndFeel::getPopupMenuFont()
+{
+    return trackedFont (15.0f, false);
 }

@@ -87,7 +87,7 @@ private:
 
     Knob grainDensityKnob, grainSizeKnob, grainSpreadKnob, unpredictabilityKnob;
     Knob characterKnob;
-    Knob delayTimeKnob, delayFeedbackKnob;
+    Knob delayTimeKnob, delayFeedbackKnob, delayTapsKnob, delayTapSpreadKnob;
     Knob chorusRateKnob, chorusDepthKnob;
 
     juce::Label rotaryFastLabel;

@@ -34,17 +34,24 @@ void DelayModule::reset()
     flutterPhase = 0.0f;
 }
 
-void DelayModule::setParameters (float delayMs, float feedback01, float mix01)
+void DelayModule::setParameters (float delayMs, float feedback01, float mix01, int taps, float tapSpread01)
 {
     delayInSamples = (float) (delayMs * 0.001 * currentSampleRate);
     feedback = juce::jlimit (0.0f, 0.95f, feedback01);
     mix = juce::jlimit (0.0f, 1.0f, mix01);
+    numTaps = juce::jlimit (1, maxTaps, taps);
+    tapSpread = juce::jlimit (0.0f, 1.0f, tapSpread01);
 }
 
 void DelayModule::process (juce::AudioBuffer<float>& buffer)
 {
     const int numChannels = juce::jmin (buffer.getNumChannels(), 2);
     const int numSamples = buffer.getNumSamples();
+
+    std::array<float, maxTaps> tapDelaySamples {};
+    std::array<float, maxTaps> tapLevel {};
+    std::array<float, maxTaps> tapLeftGain {};
+    std::array<float, maxTaps> tapRightGain {};
 
     for (int i = 0; i < numSamples; ++i)
     {
@@ -53,7 +60,24 @@ void DelayModule::process (juce::AudioBuffer<float>& buffer)
         // echo "wobble" a clean digital delay doesn't have.
         float wobbleMs = wowDepthMs * std::sin (wowPhase) + flutterDepthMs * std::sin (flutterPhase);
         float modulatedDelaySamples = juce::jmax (1.0f, delayInSamples + wobbleMs * 0.001f * (float) currentSampleRate);
-        delayLine.setDelay (modulatedDelaySamples);
+
+        // Lay out the taps: evenly spaced fractions of the delay time,
+        // e.g. numTaps == 3 reads at 1/3, 2/3, and 1x. Only the last
+        // (full-time) tap is centred and feeds the feedback/tone path;
+        // earlier taps are quieter pre-echoes, panned alternately by
+        // tapSpread for width instead of stacking up in the centre.
+        for (int k = 0; k < numTaps; ++k)
+        {
+            const bool isMainTap = (k == numTaps - 1);
+            const float ratio = (float) (k + 1) / (float) numTaps;
+
+            tapDelaySamples[(size_t) k] = juce::jmax (1.0f, modulatedDelaySamples * ratio);
+            tapLevel[(size_t) k] = isMainTap ? 1.0f : 0.7f * ratio;
+
+            const float pan = isMainTap ? 0.0f : ((k % 2 == 0) ? -tapSpread : tapSpread);
+            tapLeftGain[(size_t) k] = juce::jlimit (0.0f, 1.0f, 1.0f - pan);
+            tapRightGain[(size_t) k] = juce::jlimit (0.0f, 1.0f, 1.0f + pan);
+        }
 
         for (int ch = 0; ch < numChannels; ++ch)
         {
@@ -61,19 +85,31 @@ void DelayModule::process (juce::AudioBuffer<float>& buffer)
             auto& lp = feedbackLowpass[(size_t) ch];
             auto& hp = feedbackHighpass[(size_t) ch];
 
-            float delayed = delayLine.popSample (ch);
+            float wetSum = 0.0f;
+            float mainDelayed = 0.0f;
+
+            for (int k = 0; k < numTaps; ++k)
+            {
+                const bool isMainTap = (k == numTaps - 1);
+                float tapSample = delayLine.popSample (ch, tapDelaySamples[(size_t) k], isMainTap);
+                float gain = (ch == 0) ? tapLeftGain[(size_t) k] : tapRightGain[(size_t) k];
+                wetSum += tapSample * tapLevel[(size_t) k] * gain;
+
+                if (isMainTap)
+                    mainDelayed = tapSample;
+            }
 
             // Band-limit like tape heads, then soft-saturate: repeats
             // darken and gently compress/glow rather than looping forever
             // clean, and heavy feedback settles into a saturated ceiling
             // instead of clipping or screeching away.
-            float toned = hp.processSample (lp.processSample (delayed));
+            float toned = hp.processSample (lp.processSample (mainDelayed));
             float saturated = std::tanh (toned * 1.4f) * 0.85f;
 
             float toWrite = data[i] + saturated * feedback;
             delayLine.pushSample (ch, toWrite);
 
-            data[i] = data[i] * (1.0f - mix) + delayed * mix;
+            data[i] = data[i] * (1.0f - mix) + wetSum * mix;
         }
 
         wowPhase += juce::MathConstants<float>::twoPi * wowRateHz / (float) currentSampleRate;

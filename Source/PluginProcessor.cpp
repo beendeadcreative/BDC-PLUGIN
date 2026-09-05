@@ -20,6 +20,8 @@ namespace ParamIDs
     static const juce::String delayTimeMs       { "delayTimeMs" };
     static const juce::String delayFeedback     { "delayFeedback" };
     static const juce::String delayMix          { "delayMix" };
+    static const juce::String delayTaps         { "delayTaps" };
+    static const juce::String delayTapSpread    { "delayTapSpread" };
     static const juce::String tapeAmount        { "tapeAmount" };
     static const juce::String outputGainDb      { "outputGainDb" };
     static const juce::String delaySync             { "delaySync" };
@@ -82,6 +84,8 @@ BDCPluginAudioProcessor::BDCPluginAudioProcessor()
     delayTimeMsParam      = apvts.getRawParameterValue (ParamIDs::delayTimeMs);
     delayFeedbackParam    = apvts.getRawParameterValue (ParamIDs::delayFeedback);
     delayMixParam         = apvts.getRawParameterValue (ParamIDs::delayMix);
+    delayTapsParam        = apvts.getRawParameterValue (ParamIDs::delayTaps);
+    delayTapSpreadParam   = apvts.getRawParameterValue (ParamIDs::delayTapSpread);
     tapeAmountParam       = apvts.getRawParameterValue (ParamIDs::tapeAmount);
     outputGainDbParam     = apvts.getRawParameterValue (ParamIDs::outputGainDb);
     manualBpmParam        = apvts.getRawParameterValue (ParamIDs::manualBpm);
@@ -216,6 +220,17 @@ juce::AudioProcessorValueTreeState::ParameterLayout BDCPluginAudioProcessor::cre
     layout.add (std::make_unique<AudioParameterFloat> (
         ParameterID { ParamIDs::delayMix, 1 }, "Delay Mix",
         NormalisableRange<float> (0.0f, 1.0f), 0.3f,
+        AudioParameterFloatAttributes().withStringFromValueFunction (
+            [] (float v, int) { return String ((int) std::round (v * 100.0f)) + "%"; })));
+
+    layout.add (std::make_unique<AudioParameterInt> (
+        ParameterID { ParamIDs::delayTaps, 1 }, "Delay Taps", 1, 4, 1,
+        AudioParameterIntAttributes().withStringFromValueFunction (
+            [] (int v, int) { return String (v) + (v == 1 ? " tap" : " taps"); })));
+
+    layout.add (std::make_unique<AudioParameterFloat> (
+        ParameterID { ParamIDs::delayTapSpread, 1 }, "Delay Tap Spread",
+        NormalisableRange<float> (0.0f, 1.0f), 0.35f,
         AudioParameterFloatAttributes().withStringFromValueFunction (
             [] (float v, int) { return String ((int) std::round (v * 100.0f)) + "%"; })));
 
@@ -421,7 +436,8 @@ void BDCPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
         delayTimeMs = juce::jlimit (1.0f, 1900.0f, (float) (noteSeconds * 1000.0)); // stay under the 2s delay line
     }
 
-    delayModule.setParameters (delayTimeMs, delayFeedbackParam->load(), delayMixParam->load());
+    delayModule.setParameters (delayTimeMs, delayFeedbackParam->load(), delayMixParam->load(),
+                                (int) std::round (delayTapsParam->load()), delayTapSpreadParam->load());
     delayModule.process (buffer);
 
     // --- 5. Tape: as if the whole mix were bounced through a cassette 4-track

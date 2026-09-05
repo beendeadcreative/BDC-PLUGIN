@@ -126,6 +126,12 @@ BDCPluginAudioProcessorEditor::BDCPluginAudioProcessorEditor (BDCPluginAudioProc
         "Time between echoes, in milliseconds.");
     setupKnob (delayFeedbackKnob, "FEEDBACK", "delayFeedback",
         "How much of each echo feeds back into the next one. Higher = repeats for longer.");
+    setupKnob (delayTapsKnob, "TAPS", "delayTaps",
+        "Number of echoes per repeat, read off the same delay line like the multiple heads on a real tape echo. "
+        "1 is a plain single-tap delay; higher counts add quieter pre-echoes ahead of the main repeat.");
+    setupKnob (delayTapSpreadKnob, "SPREAD", "delayTapSpread",
+        "Spaces and pans the extra echo taps (when Taps is above 1) alternately left/right for a wider, more "
+        "rhythmic texture. Has no effect with only 1 tap.");
 
     setupKnob (chorusRateKnob, "RATE", "chorusRate",
         "Speed of the chorus effect's modulation.");
@@ -353,7 +359,8 @@ void BDCPluginAudioProcessorEditor::resized()
     }
 
     for (auto* k : { &grainDensityKnob, &grainSizeKnob, &grainSpreadKnob, &unpredictabilityKnob, &characterKnob,
-                      &delayTimeKnob, &delayFeedbackKnob, &chorusRateKnob, &chorusDepthKnob,
+                      &delayTimeKnob, &delayFeedbackKnob, &delayTapsKnob, &delayTapSpreadKnob,
+                      &chorusRateKnob, &chorusDepthKnob,
                       &manualBpmKnob, &tapeKnob, &masterMixKnob })
     {
         k->caption.setFont (SF (kKnobCaptionFontSize));
@@ -462,9 +469,11 @@ void BDCPluginAudioProcessorEditor::resized()
             layoutKnob (*knobs[i], d1.removeFromLeft (w));
     }
     {
-        const int w = d2.getWidth() / 2;
-        layoutKnob (delayTimeKnob, d2.removeFromLeft (w));
-        layoutKnob (delayFeedbackKnob, d2);
+        const int n = 4;
+        const int w = d2.getWidth() / n;
+        Knob* knobs[] { &delayTimeKnob, &delayFeedbackKnob, &delayTapsKnob, &delayTapSpreadKnob };
+        for (int i = 0; i < n; ++i)
+            layoutKnob (*knobs[i], d2.removeFromLeft (w));
     }
     {
         const int w = d3.getWidth() / 2;

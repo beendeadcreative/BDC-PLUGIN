@@ -102,6 +102,8 @@ private:
     std::atomic<float>* delayTimeMsParam = nullptr;
     std::atomic<float>* delayFeedbackParam = nullptr;
     std::atomic<float>* delayMixParam = nullptr;
+    std::atomic<float>* delayTapsParam = nullptr;
+    std::atomic<float>* delayTapSpreadParam = nullptr;
     std::atomic<float>* tapeAmountParam = nullptr;
     std::atomic<float>* outputGainDbParam = nullptr;
     std::atomic<float>* manualBpmParam = nullptr;

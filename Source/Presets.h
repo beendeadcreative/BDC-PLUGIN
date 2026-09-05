@@ -36,6 +36,12 @@ struct FactoryPresetValues
     float outputGainDb;       // -24..12
     float manualBpm;          // 40-300
     bool keyFollow;           // when true, rootNote/scaleType above are just the starting guess
+
+    // Appended fields: omit these in an older preset entry's brace-init and
+    // they default to 0, which clamps to delayTaps == 1 / delayTapSpread ==
+    // 0% - i.e. plain single-tap delay, reproducing the old sound exactly.
+    int delayTaps = 1;        // 1-4 echoes per feedback cycle
+    float delayTapSpread = 0.0f; // 0-1, spacing/stereo spread between taps
 };
 
 struct FactoryPreset

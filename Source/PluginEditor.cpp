@@ -16,39 +16,6 @@ namespace
     constexpr float kKnobCaptionFontSize = 10.0f;
     constexpr float kKnobValueFontSize = 9.0f;
     constexpr float kRotaryLabelFontSize = 10.0f;
-
-    // A continuous, multi-bend "fold" line spanning the canvas (a bit past
-    // each edge so nothing looks abruptly cut off) - the backbone for one
-    // liquid-chrome ripple.
-    juce::Path buildFoldPath (juce::Random& rng, float w, float h, int segments)
-    {
-        juce::Path path;
-
-        const float x0 = -0.12f * w;
-        const float xEnd = 1.12f * w;
-        const float segW = (xEnd - x0) / (float) segments;
-
-        float prevX = x0;
-        float prevY = rng.nextFloat() * h;
-        path.startNewSubPath (prevX, prevY);
-
-        for (int s = 0; s < segments; ++s)
-        {
-            float targetX = x0 + segW * (float) (s + 1);
-            float targetY = rng.nextFloat() * h;
-            float c1x = prevX + segW * 0.33f;
-            float c1y = prevY + (rng.nextFloat() - 0.5f) * h * 0.6f;
-            float c2x = targetX - segW * 0.33f;
-            float c2y = targetY + (rng.nextFloat() - 0.5f) * h * 0.6f;
-
-            path.cubicTo (c1x, c1y, c2x, c2y, targetX, targetY);
-
-            prevX = targetX;
-            prevY = targetY;
-        }
-
-        return path;
-    }
 }
 
 BDCPluginAudioProcessorEditor::BDCPluginAudioProcessorEditor (BDCPluginAudioProcessor& p)
@@ -309,71 +276,11 @@ void BDCPluginAudioProcessorEditor::setupSyncGroup (SyncGroup& s, const juce::St
 
 void BDCPluginAudioProcessorEditor::paint (juce::Graphics& g)
 {
-    if (backgroundTexture.isValid())
-        g.drawImageAt (backgroundTexture, 0, 0);
-    else
-        g.fillAll (BDCLookAndFeel::background);
-}
-
-void BDCPluginAudioProcessorEditor::renderBackgroundTexture()
-{
-    const int w = juce::jmax (1, getWidth());
-    const int h = juce::jmax (1, getHeight());
-    const float fw = (float) w, fh = (float) h;
-
-    backgroundTexture = juce::Image (juce::Image::RGB, w, h, true);
-    juce::Graphics g (backgroundTexture);
-
-    // Deliberately more saturated/contrasty than the UI's own ink/text/
-    // background colours - this is meant to read as a glossy poured-metal
-    // surface, not a flat UI panel.
-    const juce::Colour baseLight     { 0xfff6cfe8 };
-    const juce::Colour baseDark      { 0xffd748ab };
-    const juce::Colour foldShadow    { 0xff6e1a4c };
-    const juce::Colour foldMid       { 0xffe154a6 };
-    const juce::Colour foldHighlight { 0xfffef4fa };
-
-    g.setGradientFill (juce::ColourGradient (baseLight, 0.0f, 0.0f, baseDark, fw, fh, false));
-    g.fillRect (0, 0, w, h);
-
-    // Fixed seed: the pattern looks the same (just rescaled) every time,
-    // rather than reshuffling on every resize.
-    juce::Random rng (42);
-
-    // Each "fold" is one wavy line stroked three times at decreasing width
-    // (dark shadow -> saturated mid-tone -> bright offset highlight), like
-    // a lit, rounded ridge of poured chrome. Later folds are drawn on top,
-    // so they occlude earlier ones the way real overlapping folds would.
-    const int numFolds = 10;
-    for (int i = 0; i < numFolds; ++i)
-    {
-        auto fold = buildFoldPath (rng, fw, fh, 2 + rng.nextInt (2));
-
-        float bandScale = juce::jmap (rng.nextFloat(), 0.7f, 1.4f);
-        float shadowWidth = fh * 0.10f * bandScale;
-        float midWidth = fh * 0.052f * bandScale;
-        float highlightWidth = fh * 0.014f * bandScale;
-
-        g.setColour (foldShadow.withAlpha (0.6f));
-        g.strokePath (fold, juce::PathStrokeType (shadowWidth, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
-
-        g.setColour (foldMid.withAlpha (0.8f));
-        g.strokePath (fold, juce::PathStrokeType (midWidth, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
-
-        // The highlight traces the same curve but offset toward the "lit"
-        // side rather than sitting dead-centre in the fold.
-        auto highlightPath = fold;
-        highlightPath.applyTransform (juce::AffineTransform::translation (
-            -shadowWidth * 0.22f, -shadowWidth * 0.22f));
-        g.setColour (foldHighlight.withAlpha (0.7f));
-        g.strokePath (highlightPath, juce::PathStrokeType (highlightWidth, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
-    }
+    g.fillAll (BDCLookAndFeel::background);
 }
 
 void BDCPluginAudioProcessorEditor::resized()
 {
-    renderBackgroundTexture();
-
     // Everything below scales off this ratio, so resizing the window scales
     // the whole UI (fonts included) rather than just reflowing whitespace.
     const float scale = (float) getWidth() / (float) kDesignWidth;

@@ -20,7 +20,6 @@ public:
 
 private:
     void timerCallback() override;
-    void renderBackgroundTexture();
 
 private:
     using SliderAttachment = juce::AudioProcessorValueTreeState::SliderAttachment;
@@ -61,11 +60,6 @@ private:
     BDCPluginAudioProcessor& processorRef;
     BDCLookAndFeel lookAndFeel;
     juce::TooltipWindow tooltipWindow { this, 400 };
-
-    // Procedural "liquid chrome" background - cached to an image and only
-    // regenerated on resize, so live-resizing doesn't recompute gradients
-    // every frame.
-    juce::Image backgroundTexture;
 
     juce::Label logoLabel;
 

@@ -21,8 +21,10 @@ private:
     {
         juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> wobbleDelay { 2048 };
         juce::dsp::IIR::Filter<float> lowpass;
-        juce::dsp::IIR::Filter<float> highpass;
+        juce::dsp::IIR::Filter<float> highpass; // post-saturation: tone shaping + DC blocking
         juce::dsp::IIR::Filter<float> midBump;
+        juce::dsp::IIR::Filter<float> warmthShelf; // low-shelf body/warmth boost
+        float noiseLowpassState = 0.0f;            // shapes hiss into a soft "whoosh" instead of white noise
     };
 
     std::array<ChannelState, 2> channels;
@@ -35,5 +37,6 @@ private:
     static constexpr float wowRateHz = 0.9f;
     static constexpr float flutterRateHz = 7.0f;
 
+    float noiseLowpassAlpha = 1.0f;
     juce::Random noiseRandom { 3 };
 };

@@ -11,7 +11,12 @@ void TapeModule::prepare (const juce::dsp::ProcessSpec& spec)
         cs.lowpass.prepare (spec);
         cs.highpass.prepare (spec);
         cs.midBump.prepare (spec);
+        cs.warmthShelf.prepare (spec);
     }
+
+    // Fixed gentle lowpass that shapes the hiss into a soft "whoosh"
+    // instead of bright, full-bandwidth white noise.
+    noiseLowpassAlpha = 1.0f - std::exp (-2.0f * juce::MathConstants<float>::pi * 4000.0f / (float) currentSampleRate);
 
     setAmount (amount); // establish initial filter coefficients
     reset();
@@ -25,6 +30,8 @@ void TapeModule::reset()
         cs.lowpass.reset();
         cs.highpass.reset();
         cs.midBump.reset();
+        cs.warmthShelf.reset();
+        cs.noiseLowpassState = 0.0f;
     }
 
     wowPhase = 0.0f;
@@ -36,11 +43,14 @@ void TapeModule::setAmount (float amount01)
     amount = juce::jlimit (0.0f, 1.0f, amount01);
 
     // A clean-ish top end at 0% dulling down to a boxy, rolled-off cassette
-    // response at 100%, plus a small low-mid bump for that boxy warmth and
-    // a rising highpass to thin out the sub-bass tape can't really hold.
-    float lowpassCutoff = juce::jmap (amount, 0.0f, 1.0f, 16000.0f, 5200.0f);
-    float highpassCutoff = juce::jmap (amount, 0.0f, 1.0f, 20.0f, 100.0f);
+    // response at 100%, plus a small low-mid bump and a low-shelf body
+    // boost for warmth, and a rising highpass (applied post-saturation, see
+    // process()) to thin out the sub-bass tape can't really hold and to
+    // mop up any DC drift from the asymmetric saturation.
+    float lowpassCutoff = juce::jmap (amount, 0.0f, 1.0f, 16000.0f, 5000.0f);
+    float highpassCutoff = juce::jmap (amount, 0.0f, 1.0f, 15.0f, 60.0f);
     float midBumpGainDb = juce::jmap (amount, 0.0f, 1.0f, 0.0f, 4.5f);
+    float warmthShelfGainDb = juce::jmap (amount, 0.0f, 1.0f, 0.0f, 3.5f);
 
     for (auto& cs : channels)
     {
@@ -48,6 +58,8 @@ void TapeModule::setAmount (float amount01)
         cs.highpass.coefficients = juce::dsp::IIR::Coefficients<float>::makeHighPass (currentSampleRate, highpassCutoff);
         cs.midBump.coefficients = juce::dsp::IIR::Coefficients<float>::makePeakFilter (
             currentSampleRate, 400.0f, 0.9f, juce::Decibels::decibelsToGain (midBumpGainDb));
+        cs.warmthShelf.coefficients = juce::dsp::IIR::Coefficients<float>::makeLowShelf (
+            currentSampleRate, 200.0f, 0.7f, juce::Decibels::decibelsToGain (warmthShelfGainDb));
     }
 }
 
@@ -79,11 +91,26 @@ void TapeModule::process (juce::AudioBuffer<float>& buffer)
             cs.wobbleDelay.setDelay (modulatedDelay);
             float wobbled = cs.wobbleDelay.popSample (ch);
 
-            float toned = cs.highpass.processSample (cs.lowpass.processSample (cs.midBump.processSample (wobbled)));
-            float saturated = std::tanh (toned * driveAmount) / saturationNorm;
-            float hiss = hissLevel * (noiseRandom.nextFloat() * 2.0f - 1.0f);
+            float toned = cs.warmthShelf.processSample (cs.lowpass.processSample (cs.midBump.processSample (wobbled)));
 
-            float wet = saturated + hiss;
+            // Asymmetric drive (gentler on the negative half) instead of a
+            // symmetric tanh: symmetric clipping only adds odd harmonics,
+            // which reads as harsh/transistor-y. The asymmetry adds even
+            // harmonics too, which is what actually sounds warm/tube-like.
+            float driven = toned * driveAmount;
+            float saturated = (driven >= 0.0f ? std::tanh (driven) : std::tanh (driven * 0.75f)) / saturationNorm;
+
+            // DC blocking + final tone shaping happens after saturation, so
+            // it also mops up any DC drift the asymmetry introduces.
+            float shaped = cs.highpass.processSample (saturated);
+
+            // Hiss shaped into a soft whoosh (lowpassed) rather than bright
+            // white noise - much closer to real tape hiss.
+            float rawNoise = noiseRandom.nextFloat() * 2.0f - 1.0f;
+            cs.noiseLowpassState += noiseLowpassAlpha * (rawNoise - cs.noiseLowpassState);
+            float hiss = hissLevel * cs.noiseLowpassState * 3.0f; // compensate for lowpass energy loss
+
+            float wet = shaped + hiss;
             data[i] = data[i] * (1.0f - amount) + wet * amount;
         }
 

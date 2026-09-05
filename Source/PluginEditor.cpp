@@ -16,6 +16,22 @@ namespace
     constexpr float kKnobCaptionFontSize = 10.0f;
     constexpr float kKnobValueFontSize = 9.0f;
     constexpr float kRotaryLabelFontSize = 10.0f;
+
+    // The Character macro's sparse<->busy curve. Eased with t*t so most of
+    // the knob's travel stays gentle and the chaotic end only shows up in
+    // the last stretch, rather than getting noisy right away.
+    struct CharacterTargets { float density, sizeMs, spreadSec, unpredictability; };
+
+    CharacterTargets characterCurve (float t)
+    {
+        const float shaped = t * t;
+        return {
+            juce::jmap (shaped, 0.0f, 1.0f, 1.2f, 20.0f),
+            juce::jmap (shaped, 0.0f, 1.0f, 420.0f, 45.0f),
+            juce::jmap (shaped, 0.0f, 1.0f, 3.2f, 0.25f),
+            juce::jmap (shaped, 0.0f, 1.0f, 0.06f, 0.85f)
+        };
+    }
 }
 
 BDCPluginAudioProcessorEditor::BDCPluginAudioProcessorEditor (BDCPluginAudioProcessor& p)
@@ -88,6 +104,23 @@ BDCPluginAudioProcessorEditor::BDCPluginAudioProcessorEditor (BDCPluginAudioProc
         "How far back in time the generator is allowed to pull material from. Higher = it draws on a longer memory of what you played.");
     setupKnob (unpredictabilityKnob, "CHAOS", "unpredictability",
         "How often the generated melody takes a big jump instead of moving stepwise. Higher = more unpredictable and adventurous.");
+
+    characterKnob.caption.setText ("CHARACTER", juce::dontSendNotification);
+    characterKnob.caption.setJustificationType (juce::Justification::centred);
+    characterKnob.caption.setFont (juce::Font (10.0f));
+    addAndMakeVisible (characterKnob.caption);
+    characterKnob.valueLabel.setJustificationType (juce::Justification::centred);
+    characterKnob.valueLabel.setFont (juce::Font (9.0f));
+    addAndMakeVisible (characterKnob.valueLabel);
+    characterKnob.dial.setRange (0.0, 1.0);
+    characterKnob.dial.setTooltip (
+        "Macro control for the generator's personality: sparse and ambient at low settings, dense and chaotic "
+        "at high settings. Moves Density, Size, Spread, and Chaos together in one gesture - each stays free "
+        "for hand-tuning afterwards, and won't snap this knob back to match.");
+    addAndMakeVisible (characterKnob.dial);
+    characterKnob.dial.onValueChange = [this] { applyCharacterMacro ((float) characterKnob.dial.getValue()); };
+    characterKnob.dial.setValue (0.3, juce::dontSendNotification);
+    applyCharacterMacro (0.3f);
 
     setupKnob (delayTimeKnob, "TIME", "delayTimeMs",
         "Time between echoes, in milliseconds.");
@@ -253,6 +286,24 @@ void BDCPluginAudioProcessorEditor::setupKnob (Knob& k, const juce::String& labe
     }
 }
 
+void BDCPluginAudioProcessorEditor::applyCharacterMacro (float t01)
+{
+    const auto targets = characterCurve (t01);
+
+    auto setRaw = [this] (const juce::String& id, float rawValue)
+    {
+        if (auto* p = processorRef.apvts.getParameter (id))
+            p->setValueNotifyingHost (p->convertTo0to1 (rawValue));
+    };
+
+    setRaw ("grainDensity", targets.density);
+    setRaw ("grainSizeMs", targets.sizeMs);
+    setRaw ("grainSpreadSec", targets.spreadSec);
+    setRaw ("unpredictability", targets.unpredictability);
+
+    characterKnob.valueLabel.setText (juce::String ((int) std::round (t01 * 100.0f)) + "%", juce::dontSendNotification);
+}
+
 void BDCPluginAudioProcessorEditor::setupSyncGroup (SyncGroup& s, const juce::String& syncParamID,
                                                      const juce::String& divisionParamID,
                                                      const juce::String& multiplierParamID,
@@ -301,7 +352,7 @@ void BDCPluginAudioProcessorEditor::resized()
         hb->valueLabel.setFont (SF (kHeroValueFontSize));
     }
 
-    for (auto* k : { &grainDensityKnob, &grainSizeKnob, &grainSpreadKnob, &unpredictabilityKnob,
+    for (auto* k : { &grainDensityKnob, &grainSizeKnob, &grainSpreadKnob, &unpredictabilityKnob, &characterKnob,
                       &delayTimeKnob, &delayFeedbackKnob, &chorusRateKnob, &chorusDepthKnob,
                       &manualBpmKnob, &tapeKnob, &masterMixKnob })
     {
@@ -348,6 +399,12 @@ void BDCPluginAudioProcessorEditor::resized()
     masterMixKnob.valueLabel.setBounds (mixSlot.removeFromBottom (S (13)));
     masterMixKnob.caption.setBounds (mixSlot.removeFromBottom (S (16)));
     masterMixKnob.dial.setBounds (mixSlot);
+    footer.removeFromRight (S (16));
+
+    auto characterSlot = footer.removeFromRight (S (72));
+    characterKnob.valueLabel.setBounds (characterSlot.removeFromBottom (S (13)));
+    characterKnob.caption.setBounds (characterSlot.removeFromBottom (S (16)));
+    characterKnob.dial.setBounds (characterSlot);
     footer.removeFromRight (S (16));
 
     outputGainCaption.setBounds (footer.removeFromLeft (S (90)).withSizeKeepingCentre (S (90), S (24)));

@@ -57,6 +57,13 @@ private:
     void setupSyncGroup (SyncGroup&, const juce::String& syncParamID, const juce::String& divisionParamID,
                           const juce::String& multiplierParamID, const juce::String& tooltip);
 
+    // The Character macro knob doesn't own a parameter itself - it's a
+    // one-shot gesture that pushes a curated combination of values into the
+    // four grain params below it, which stay independently automatable and
+    // hand-tunable afterwards (moving one won't snap Character back to
+    // whatever position would "match" it).
+    void applyCharacterMacro (float t01);
+
     BDCPluginAudioProcessor& processorRef;
     BDCLookAndFeel lookAndFeel;
     juce::TooltipWindow tooltipWindow { this, 400 };
@@ -79,6 +86,7 @@ private:
     HeroBar grainBar, delayBar, chorusBar, rotaryBar;
 
     Knob grainDensityKnob, grainSizeKnob, grainSpreadKnob, unpredictabilityKnob;
+    Knob characterKnob;
     Knob delayTimeKnob, delayFeedbackKnob;
     Knob chorusRateKnob, chorusDepthKnob;
 

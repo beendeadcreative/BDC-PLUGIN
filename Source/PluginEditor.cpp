@@ -128,9 +128,21 @@ void BDCPluginAudioProcessorEditor::setupHeroBar (HeroBar& hb, const juce::Strin
     hb.header.setFont (juce::Font (15.0f));
     addAndMakeVisible (hb.header);
 
+    hb.valueLabel.setJustificationType (juce::Justification::centred);
+    hb.valueLabel.setFont (juce::Font (11.0f));
+    addAndMakeVisible (hb.valueLabel);
+
     hb.bar.setTooltip (tooltip);
     addAndMakeVisible (hb.bar);
     hb.attachment = std::make_unique<SliderAttachment> (processorRef.apvts, paramID, hb.bar);
+
+    if (auto* param = processorRef.apvts.getParameter (paramID))
+    {
+        juce::Label* label = &hb.valueLabel;
+        auto updateText = [label, param] { label->setText (param->getCurrentValueAsText(), juce::dontSendNotification); };
+        hb.bar.onValueChange = updateText;
+        updateText();
+    }
 }
 
 void BDCPluginAudioProcessorEditor::setupKnob (Knob& k, const juce::String& labelText,
@@ -235,7 +247,8 @@ void BDCPluginAudioProcessorEditor::resized()
     auto layoutHero = [] (HeroBar& hb, juce::Rectangle<int> col)
     {
         hb.header.setBounds (col.removeFromTop (26));
-        col.removeFromTop (8);
+        hb.valueLabel.setBounds (col.removeFromTop (16));
+        col.removeFromTop (6);
         auto barArea = col.withSizeKeepingCentre (juce::jmin (col.getWidth(), 90), col.getHeight());
         hb.bar.setBounds (barArea);
     };

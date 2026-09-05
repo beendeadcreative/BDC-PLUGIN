@@ -29,6 +29,7 @@ private:
     struct HeroBar
     {
         juce::Label header;
+        juce::Label valueLabel; // live numeric readout, shown below the name
         juce::Slider bar { juce::Slider::LinearBarVertical, juce::Slider::NoTextBox };
         std::unique_ptr<SliderAttachment> attachment;
     };

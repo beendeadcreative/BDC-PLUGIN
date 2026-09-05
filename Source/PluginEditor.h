@@ -78,6 +78,13 @@ private:
     // whatever position would "match" it).
     void applyCharacterMacro (float t01);
 
+    // Jumbles the generator + effect tone knobs within curated ranges (not
+    // their full extremes) for a quick "happy accident" starting point.
+    // Doesn't touch Scale/Root/Key Follow, sync settings, or level-critical
+    // params (Mix, Output, BPM) - those are context, not tone, and
+    // randomizing them would be more disruptive than fun.
+    void randomizeSound();
+
     // Shows/hides the detail-strip and sync-strip knobs (the per-effect
     // fine-tuning controls) and resizes the window to match, so the default
     // view stays lean - the four hero mix bars and footer macros are always
@@ -95,6 +102,8 @@ private:
 
     juce::TextButton advancedToggleButton { "SHOW ADVANCED" };
     bool showAdvanced = false;
+
+    juce::TextButton randomizeButton { "RANDOM" };
 
     juce::Label tunerLabel;
 

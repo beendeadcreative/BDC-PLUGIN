@@ -61,6 +61,12 @@ BDCPluginAudioProcessorEditor::BDCPluginAudioProcessorEditor (BDCPluginAudioProc
     };
     addAndMakeVisible (presetBox);
 
+    randomizeButton.setTooltip (
+        "Jumbles the generator and effect tone knobs within musical ranges for a quick new starting point - "
+        "Scale/Root/Key Follow, sync settings, and level knobs (Mix, Output, BPM) are left alone.");
+    randomizeButton.onClick = [this] { randomizeSound(); };
+    addAndMakeVisible (randomizeButton);
+
     advancedToggleButton.setTooltip (
         "Shows the per-effect fine-tuning knobs (grain density/size/spread/chaos, delay time/feedback/taps/"
         "spread, chorus rate/depth, rotary speed) and tempo sync controls. The four mix bars above and the "
@@ -352,6 +358,43 @@ void BDCPluginAudioProcessorEditor::applyCharacterMacro (float t01)
     characterKnob.valueLabel.setText (juce::String ((int) std::round (t01 * 100.0f)) + "%", juce::dontSendNotification);
 }
 
+void BDCPluginAudioProcessorEditor::randomizeSound()
+{
+    juce::Random random;
+
+    auto setRandom = [this, &random] (const juce::String& id, float lo, float hi)
+    {
+        if (auto* p = processorRef.apvts.getParameter (id))
+        {
+            const float value = lo + random.nextFloat() * (hi - lo);
+            p->setValueNotifyingHost (p->convertTo0to1 (value));
+        }
+    };
+
+    // Grain gets the heaviest hand - it's the generator's actual voice.
+    // Ranges stay well inside the knobs' full extremes (e.g. Density can go
+    // to 30Hz, Unpredictability to 1.0) so a random click reads as "a
+    // different idea" rather than "broken."
+    setRandom ("grainDensity", 1.0f, 14.0f);
+    setRandom ("grainSizeMs", 60.0f, 350.0f);
+    setRandom ("grainSpreadSec", 0.3f, 3.0f);
+    setRandom ("unpredictability", 0.05f, 0.6f);
+    setRandom ("generativeMix", 0.25f, 0.75f);
+
+    // Chorus/Rotary/Delay/Tape get a lighter touch, so the result still
+    // reads as "the same instrument, new take" rather than a random preset.
+    setRandom ("chorusRate", 0.1f, 1.5f);
+    setRandom ("chorusDepth", 0.1f, 0.5f);
+    setRandom ("chorusMix", 0.1f, 0.4f);
+    setRandom ("rotaryMix", 0.1f, 0.6f);
+    setRandom ("delayTimeMs", 150.0f, 900.0f);
+    setRandom ("delayFeedback", 0.15f, 0.5f);
+    setRandom ("delayMix", 0.15f, 0.45f);
+    setRandom ("delayTaps", 1.0f, 3.0f);
+    setRandom ("delayTapSpread", 0.0f, 0.6f);
+    setRandom ("tapeAmount", 0.0f, 35.0f);
+}
+
 void BDCPluginAudioProcessorEditor::setAdvancedVisible (bool show)
 {
     showAdvanced = show;
@@ -488,6 +531,8 @@ void BDCPluginAudioProcessorEditor::resized()
     auto presetRow = area.removeFromTop (S (26));
     presetCaption.setBounds (presetRow.removeFromLeft (S (60)));
     presetBox.setBounds (presetRow.removeFromLeft (S (240)));
+    presetRow.removeFromLeft (S (12));
+    randomizeButton.setBounds (presetRow.removeFromLeft (S (90)).withSizeKeepingCentre (S (90), S (24)));
     advancedToggleButton.setBounds (presetRow.removeFromRight (S (150)).withSizeKeepingCentre (S (150), S (24)));
 
     area.removeFromTop (S (14));

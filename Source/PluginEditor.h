@@ -40,6 +40,13 @@ private:
         juce::Slider dial { juce::Slider::RotaryVerticalDrag, juce::Slider::NoTextBox };
         std::unique_ptr<SliderAttachment> attachment;
         juce::Label valueLabel; // live numeric readout, shown below the caption
+
+        void setVisible (bool v)
+        {
+            caption.setVisible (v);
+            dial.setVisible (v);
+            valueLabel.setVisible (v);
+        }
     };
 
     struct SyncGroup
@@ -50,6 +57,13 @@ private:
         std::unique_ptr<ComboBoxAttachment> divisionAttachment;
         juce::ComboBox multiplierBox;
         std::unique_ptr<ComboBoxAttachment> multiplierAttachment;
+
+        void setVisible (bool v)
+        {
+            syncButton.setVisible (v);
+            divisionBox.setVisible (v);
+            multiplierBox.setVisible (v);
+        }
     };
 
     void setupHeroBar (HeroBar&, const juce::String& labelText, const juce::String& paramID, const juce::String& tooltip);
@@ -64,6 +78,12 @@ private:
     // whatever position would "match" it).
     void applyCharacterMacro (float t01);
 
+    // Shows/hides the detail-strip and sync-strip knobs (the per-effect
+    // fine-tuning controls) and resizes the window to match, so the default
+    // view stays lean - the four hero mix bars and footer macros are always
+    // visible either way; this only affects the deeper knobs underneath.
+    void setAdvancedVisible (bool show);
+
     BDCPluginAudioProcessor& processorRef;
     BDCLookAndFeel lookAndFeel;
     juce::TooltipWindow tooltipWindow { this, 400 };
@@ -72,6 +92,9 @@ private:
 
     juce::Label presetCaption;
     juce::ComboBox presetBox;
+
+    juce::TextButton advancedToggleButton { "SHOW ADVANCED" };
+    bool showAdvanced = false;
 
     juce::Label tunerLabel;
 

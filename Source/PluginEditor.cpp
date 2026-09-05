@@ -6,7 +6,8 @@ namespace
     // every dimension (including fonts) by getWidth() / kDesignWidth, so
     // resizing the window scales the graphics rather than just reflowing.
     constexpr int kDesignWidth = 860;
-    constexpr int kDesignHeight = 620;
+    constexpr int kDesignHeightExpanded = 620;
+    constexpr int kDesignHeightCompact = 420; // hero bars + footer only, no detail/sync knobs
 
     constexpr float kLogoFontSize = 34.0f;
     constexpr float kTunerFontSize = 22.0f;
@@ -59,6 +60,13 @@ BDCPluginAudioProcessorEditor::BDCPluginAudioProcessorEditor (BDCPluginAudioProc
             processorRef.setCurrentProgram (index);
     };
     addAndMakeVisible (presetBox);
+
+    advancedToggleButton.setTooltip (
+        "Shows the per-effect fine-tuning knobs (grain density/size/spread/chaos, delay time/feedback/taps/"
+        "spread, chorus rate/depth, rotary speed) and tempo sync controls. The four mix bars above and the "
+        "footer macros work either way - this just reveals the deeper knobs underneath.");
+    advancedToggleButton.onClick = [this] { setAdvancedVisible (! showAdvanced); };
+    addAndMakeVisible (advancedToggleButton);
 
     tunerLabel.setText ("--", juce::dontSendNotification);
     tunerLabel.setFont (juce::Font (22.0f));
@@ -174,12 +182,9 @@ BDCPluginAudioProcessorEditor::BDCPluginAudioProcessorEditor (BDCPluginAudioProc
     addAndMakeVisible (sustainButton);
     sustainAttachment = std::make_unique<ButtonAttachment> (processorRef.apvts, "sustainOnSilence", sustainButton);
 
-    setSize (kDesignWidth, kDesignHeight);
-
     setResizable (true, true);
-    setResizeLimits (560, 400, 1720, 1240);
-    if (auto* constrainer = getConstrainer())
-        constrainer->setFixedAspectRatio ((double) kDesignWidth / (double) kDesignHeight);
+    setSize (kDesignWidth, kDesignHeightCompact);
+    setAdvancedVisible (false); // starts collapsed to a lean default view; sets aspect ratio + resize limits too
 
     startTimerHz (20);
 }
@@ -310,6 +315,34 @@ void BDCPluginAudioProcessorEditor::applyCharacterMacro (float t01)
     characterKnob.valueLabel.setText (juce::String ((int) std::round (t01 * 100.0f)) + "%", juce::dontSendNotification);
 }
 
+void BDCPluginAudioProcessorEditor::setAdvancedVisible (bool show)
+{
+    showAdvanced = show;
+    advancedToggleButton.setButtonText (show ? "HIDE ADVANCED" : "SHOW ADVANCED");
+
+    for (auto* k : { &grainDensityKnob, &grainSizeKnob, &grainSpreadKnob, &unpredictabilityKnob,
+                      &delayTimeKnob, &delayFeedbackKnob, &delayTapsKnob, &delayTapSpreadKnob,
+                      &chorusRateKnob, &chorusDepthKnob, &manualBpmKnob })
+        k->setVisible (show);
+
+    rotaryFastLabel.setVisible (show);
+    rotaryFastButton.setVisible (show);
+    grainSync.setVisible (show);
+    delaySync.setVisible (show);
+
+    // The two modes are two different fixed aspect ratios (the detail/sync
+    // knobs take a fixed chunk of height that either exists or doesn't), so
+    // switching modes means re-pinning the constrainer and resize limits,
+    // not just resizing once.
+    const double aspect = (double) kDesignWidth / (double) (show ? kDesignHeightExpanded : kDesignHeightCompact);
+
+    if (auto* constrainer = getConstrainer())
+        constrainer->setFixedAspectRatio (aspect);
+
+    setResizeLimits (560, juce::roundToInt (560.0 / aspect), 1720, juce::roundToInt (1720.0 / aspect));
+    setSize (getWidth(), juce::roundToInt ((double) getWidth() / aspect));
+}
+
 void BDCPluginAudioProcessorEditor::setupSyncGroup (SyncGroup& s, const juce::String& syncParamID,
                                                      const juce::String& divisionParamID,
                                                      const juce::String& multiplierParamID,
@@ -400,6 +433,7 @@ void BDCPluginAudioProcessorEditor::resized()
     auto presetRow = area.removeFromTop (S (26));
     presetCaption.setBounds (presetRow.removeFromLeft (S (60)));
     presetBox.setBounds (presetRow.removeFromLeft (S (240)));
+    advancedToggleButton.setBounds (presetRow.removeFromRight (S (150)).withSizeKeepingCentre (S (150), S (24)));
 
     area.removeFromTop (S (14));
 
@@ -435,13 +469,20 @@ void BDCPluginAudioProcessorEditor::resized()
     outputGainCaption.setBounds (footer.removeFromLeft (S (90)).withSizeKeepingCentre (S (90), S (24)));
     outputGainSlider.setBounds (footer.withSizeKeepingCentre (footer.getWidth(), S (24)));
 
-    area.removeFromBottom (S (16));
-
-    auto detail = area.removeFromBottom (S (120));
-    area.removeFromBottom (S (12));
-
-    auto syncStrip = area.removeFromBottom (S (58));
-    area.removeFromBottom (S (16));
+    // The detail (per-effect fine-tuning knobs) and sync (tempo-sync)
+    // strips only take up layout space when Advanced is shown - when it's
+    // hidden, those knobs are invisible and the hero bars simply get the
+    // reclaimed space instead (see setAdvancedVisible(), which resizes the
+    // window between two fixed-aspect-ratio modes to match).
+    juce::Rectangle<int> detail, syncStrip;
+    if (showAdvanced)
+    {
+        area.removeFromBottom (S (16));
+        detail = area.removeFromBottom (S (120));
+        area.removeFromBottom (S (12));
+        syncStrip = area.removeFromBottom (S (58));
+        area.removeFromBottom (S (16));
+    }
 
     auto heroArea = area;
     const int numCols = 4;
@@ -449,7 +490,7 @@ void BDCPluginAudioProcessorEditor::resized()
     const int colWidth = (heroArea.getWidth() - gap * (numCols - 1)) / numCols;
 
     columnDividerTop = heroArea.getY();
-    columnDividerBottom = syncStrip.getBottom();
+    columnDividerBottom = showAdvanced ? syncStrip.getBottom() : heroArea.getBottom();
 
     auto layoutHero = [S] (HeroBar& hb, juce::Rectangle<int> col)
     {
@@ -474,65 +515,69 @@ void BDCPluginAudioProcessorEditor::resized()
     layoutHero (chorusBar, col3);
     layoutHero (rotaryBar, col4);
 
-    auto d1 = detail.removeFromLeft (colWidth); detail.removeFromLeft (gap);
-    auto d2 = detail.removeFromLeft (colWidth); detail.removeFromLeft (gap);
-    auto d3 = detail.removeFromLeft (colWidth); detail.removeFromLeft (gap);
-    auto d4 = detail;
-
-    auto layoutKnob = [S] (Knob& k, juce::Rectangle<int> slot)
+    if (showAdvanced)
     {
-        k.valueLabel.setBounds (slot.removeFromBottom (S (13)));
-        k.caption.setBounds (slot.removeFromBottom (S (16)));
-        k.dial.setBounds (slot);
-    };
+        auto d1 = detail.removeFromLeft (colWidth); detail.removeFromLeft (gap);
+        auto d2 = detail.removeFromLeft (colWidth); detail.removeFromLeft (gap);
+        auto d3 = detail.removeFromLeft (colWidth); detail.removeFromLeft (gap);
+        auto d4 = detail;
 
-    {
-        const int n = 4;
-        const int w = d1.getWidth() / n;
-        Knob* knobs[] { &grainDensityKnob, &grainSizeKnob, &grainSpreadKnob, &unpredictabilityKnob };
-        for (int i = 0; i < n; ++i)
-            layoutKnob (*knobs[i], d1.removeFromLeft (w));
+        auto layoutKnob = [S] (Knob& k, juce::Rectangle<int> slot)
+        {
+            k.valueLabel.setBounds (slot.removeFromBottom (S (13)));
+            k.caption.setBounds (slot.removeFromBottom (S (16)));
+            k.dial.setBounds (slot);
+        };
+
+        {
+            const int n = 4;
+            const int w = d1.getWidth() / n;
+            Knob* knobs[] { &grainDensityKnob, &grainSizeKnob, &grainSpreadKnob, &unpredictabilityKnob };
+            for (int i = 0; i < n; ++i)
+                layoutKnob (*knobs[i], d1.removeFromLeft (w));
+        }
+        {
+            const int n = 4;
+            const int w = d2.getWidth() / n;
+            Knob* knobs[] { &delayTimeKnob, &delayFeedbackKnob, &delayTapsKnob, &delayTapSpreadKnob };
+            for (int i = 0; i < n; ++i)
+                layoutKnob (*knobs[i], d2.removeFromLeft (w));
+        }
+        {
+            const int w = d3.getWidth() / 2;
+            layoutKnob (chorusRateKnob, d3.removeFromLeft (w));
+            layoutKnob (chorusDepthKnob, d3);
+        }
+        {
+            rotaryFastLabel.setBounds (d4.removeFromBottom (S (16)));
+            rotaryFastButton.setBounds (d4.withSizeKeepingCentre (juce::jmin (d4.getWidth(), S (100)), S (32)));
+        }
+
+        // Sync strip: SYNC + note division + x/÷ multiplier for Grain and
+        // Delay (matching their hero-bar columns); a manual BPM fallback
+        // knob sits under Rotary's column, where there's otherwise nothing
+        // to sync.
+        auto layoutSync = [S] (SyncGroup& s, juce::Rectangle<int> slot)
+        {
+            auto row = slot.withSizeKeepingCentre (slot.getWidth(), S (28));
+            s.syncButton.setBounds (row.removeFromLeft (S (50)));
+            row.removeFromLeft (S (4));
+            s.multiplierBox.setBounds (row.removeFromRight (S (50)));
+            row.removeFromRight (S (4));
+            s.divisionBox.setBounds (row);
+        };
+
+        auto sy1 = syncStrip.removeFromLeft (colWidth); syncStrip.removeFromLeft (gap);
+        auto sy2 = syncStrip.removeFromLeft (colWidth); syncStrip.removeFromLeft (gap);
+        auto sy3 = syncStrip.removeFromLeft (colWidth); syncStrip.removeFromLeft (gap);
+        auto sy4 = syncStrip;
+        juce::ignoreUnused (sy3);
+
+        layoutSync (grainSync, sy1);
+        layoutSync (delaySync, sy2);
+
+        manualBpmKnob.valueLabel.setBounds (sy4.removeFromBottom (S (13)));
+        manualBpmKnob.caption.setBounds (sy4.removeFromBottom (S (16)));
+        manualBpmKnob.dial.setBounds (sy4.withSizeKeepingCentre (juce::jmin (sy4.getWidth(), S (44)), sy4.getHeight()));
     }
-    {
-        const int n = 4;
-        const int w = d2.getWidth() / n;
-        Knob* knobs[] { &delayTimeKnob, &delayFeedbackKnob, &delayTapsKnob, &delayTapSpreadKnob };
-        for (int i = 0; i < n; ++i)
-            layoutKnob (*knobs[i], d2.removeFromLeft (w));
-    }
-    {
-        const int w = d3.getWidth() / 2;
-        layoutKnob (chorusRateKnob, d3.removeFromLeft (w));
-        layoutKnob (chorusDepthKnob, d3);
-    }
-    {
-        rotaryFastLabel.setBounds (d4.removeFromBottom (S (16)));
-        rotaryFastButton.setBounds (d4.withSizeKeepingCentre (juce::jmin (d4.getWidth(), S (100)), S (32)));
-    }
-
-    // Sync strip: SYNC + note division + x/÷ multiplier for Grain and
-    // Delay (matching their hero-bar columns); a manual BPM fallback knob
-    // sits under Rotary's column, where there's otherwise nothing to sync.
-    auto layoutSync = [S] (SyncGroup& s, juce::Rectangle<int> slot)
-    {
-        auto row = slot.withSizeKeepingCentre (slot.getWidth(), S (28));
-        s.syncButton.setBounds (row.removeFromLeft (S (50)));
-        row.removeFromLeft (S (4));
-        s.multiplierBox.setBounds (row.removeFromRight (S (50)));
-        row.removeFromRight (S (4));
-        s.divisionBox.setBounds (row);
-    };
-
-    auto sy1 = syncStrip.removeFromLeft (colWidth); syncStrip.removeFromLeft (gap);
-    auto sy2 = syncStrip.removeFromLeft (colWidth); syncStrip.removeFromLeft (gap);
-    auto sy3 = syncStrip.removeFromLeft (colWidth); syncStrip.removeFromLeft (gap);
-    auto sy4 = syncStrip;
-    juce::ignoreUnused (sy3);
-
-    layoutSync (grainSync, sy1);
-    layoutSync (delaySync, sy2);
-
-    manualBpmKnob.valueLabel.setBounds (sy4.removeFromBottom (S (13)));
-    manualBpmKnob.caption.setBounds (sy4.removeFromBottom (S (16)));
-    manualBpmKnob.dial.setBounds (sy4.withSizeKeepingCentre (juce::jmin (sy4.getWidth(), S (44)), sy4.getHeight()));
 }

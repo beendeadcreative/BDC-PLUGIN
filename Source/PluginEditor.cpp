@@ -1,5 +1,23 @@
 #include "PluginEditor.h"
 
+namespace
+{
+    // Reference size the whole layout is designed at; resized() scales
+    // every dimension (including fonts) by getWidth() / kDesignWidth, so
+    // resizing the window scales the graphics rather than just reflowing.
+    constexpr int kDesignWidth = 860;
+    constexpr int kDesignHeight = 620;
+
+    constexpr float kLogoFontSize = 34.0f;
+    constexpr float kTunerFontSize = 22.0f;
+    constexpr float kCaptionFontSize = 12.0f;
+    constexpr float kHeroHeaderFontSize = 15.0f;
+    constexpr float kHeroValueFontSize = 11.0f;
+    constexpr float kKnobCaptionFontSize = 10.0f;
+    constexpr float kKnobValueFontSize = 9.0f;
+    constexpr float kRotaryLabelFontSize = 10.0f;
+}
+
 BDCPluginAudioProcessorEditor::BDCPluginAudioProcessorEditor (BDCPluginAudioProcessor& p)
     : AudioProcessorEditor (p), processorRef (p)
 {
@@ -117,7 +135,13 @@ BDCPluginAudioProcessorEditor::BDCPluginAudioProcessorEditor (BDCPluginAudioProc
     addAndMakeVisible (sustainButton);
     sustainAttachment = std::make_unique<ButtonAttachment> (processorRef.apvts, "sustainOnSilence", sustainButton);
 
-    setSize (860, 620);
+    setSize (kDesignWidth, kDesignHeight);
+
+    setResizable (true, true);
+    setResizeLimits (560, 400, 1720, 1240);
+    if (auto* constrainer = getConstrainer())
+        constrainer->setFixedAspectRatio ((double) kDesignWidth / (double) kDesignHeight);
+
     startTimerHz (20);
 }
 
@@ -252,74 +276,163 @@ void BDCPluginAudioProcessorEditor::setupSyncGroup (SyncGroup& s, const juce::St
 
 void BDCPluginAudioProcessorEditor::paint (juce::Graphics& g)
 {
+    if (backgroundTexture.isValid())
+        g.drawImageAt (backgroundTexture, 0, 0);
+    else
+        g.fillAll (BDCLookAndFeel::background);
+}
+
+void BDCPluginAudioProcessorEditor::renderBackgroundTexture()
+{
+    const int w = juce::jmax (1, getWidth());
+    const int h = juce::jmax (1, getHeight());
+
+    backgroundTexture = juce::Image (juce::Image::RGB, w, h, true);
+    juce::Graphics g (backgroundTexture);
+
     g.fillAll (BDCLookAndFeel::background);
+
+    // Fixed seed: the pattern looks the same (just rescaled) every time,
+    // rather than reshuffling on every resize.
+    juce::Random rng (42);
+
+    // Soft "liquid chrome" blobs - alternating pale highlight and deep plum
+    // shadow, layered to suggest a flowing, reflective metallic surface.
+    for (int i = 0; i < 9; ++i)
+    {
+        float cx = rng.nextFloat() * (float) w;
+        float cy = rng.nextFloat() * (float) h;
+        float radius = juce::jmap (rng.nextFloat(), 0.28f, 0.62f) * (float) juce::jmax (w, h);
+
+        bool isHighlight = (i % 2 == 0);
+        juce::Colour centreColour = (isHighlight ? BDCLookAndFeel::text : BDCLookAndFeel::ink)
+                                        .withAlpha (isHighlight ? 0.20f : 0.14f);
+
+        juce::ColourGradient gradient (centreColour, cx, cy,
+                                        centreColour.withAlpha (0.0f), cx + radius, cy, true);
+        g.setGradientFill (gradient);
+        g.fillEllipse (cx - radius, cy - radius, radius * 2.0f, radius * 2.0f);
+    }
+
+    // A few thin bright specular streaks for the chrome sheen.
+    for (int i = 0; i < 4; ++i)
+    {
+        float x = rng.nextFloat() * (float) w;
+        float y = rng.nextFloat() * (float) h;
+        float length = (0.6f + rng.nextFloat() * 0.5f) * (float) w;
+        float angle = juce::jmap (rng.nextFloat(), -0.35f, 0.35f);
+        float thickness = (0.015f + rng.nextFloat() * 0.02f) * (float) h;
+
+        juce::Path streak;
+        streak.addRoundedRectangle (-length * 0.5f, -thickness * 0.5f, length, thickness, thickness * 0.5f);
+
+        juce::ColourGradient streakGradient (
+            BDCLookAndFeel::text.withAlpha (0.0f), -length * 0.5f, 0.0f,
+            BDCLookAndFeel::text.withAlpha (0.0f), length * 0.5f, 0.0f, false);
+        streakGradient.addColour (0.5, BDCLookAndFeel::text.withAlpha (0.35f));
+
+        juce::Graphics::ScopedSaveState save (g);
+        g.addTransform (juce::AffineTransform::rotation (angle).translated (x, y));
+        g.setGradientFill (streakGradient);
+        g.fillPath (streak);
+    }
 }
 
 void BDCPluginAudioProcessorEditor::resized()
 {
-    auto area = getLocalBounds().reduced (24);
+    renderBackgroundTexture();
 
-    auto header = area.removeFromTop (40);
-    logoLabel.setBounds (header.removeFromLeft (180));
+    // Everything below scales off this ratio, so resizing the window scales
+    // the whole UI (fonts included) rather than just reflowing whitespace.
+    const float scale = (float) getWidth() / (float) kDesignWidth;
+    auto S  = [scale] (int v)   { return juce::roundToInt ((float) v * scale); };
+    auto SF = [scale] (float v) { return juce::Font (v * scale); };
 
-    auto controls = header.removeFromRight (344);
-    keyFollowButton.setBounds (controls.removeFromRight (44).withSizeKeepingCentre (40, 24));
-    controls.removeFromRight (6);
-    auto scaleRow = controls.removeFromLeft (150);
-    scaleCaption.setBounds (scaleRow.removeFromLeft (56));
+    logoLabel.setFont (SF (kLogoFontSize));
+    presetCaption.setFont (SF (kCaptionFontSize));
+    tunerLabel.setFont (SF (kTunerFontSize));
+    scaleCaption.setFont (SF (kCaptionFontSize));
+    rootCaption.setFont (SF (kCaptionFontSize));
+    outputGainCaption.setFont (SF (kCaptionFontSize));
+    rotaryFastLabel.setFont (SF (kRotaryLabelFontSize));
+
+    for (auto* hb : { &grainBar, &delayBar, &chorusBar, &rotaryBar })
+    {
+        hb->header.setFont (SF (kHeroHeaderFontSize));
+        hb->valueLabel.setFont (SF (kHeroValueFontSize));
+    }
+
+    for (auto* k : { &grainDensityKnob, &grainSizeKnob, &grainSpreadKnob, &unpredictabilityKnob,
+                      &delayTimeKnob, &delayFeedbackKnob, &chorusRateKnob, &chorusDepthKnob,
+                      &manualBpmKnob, &tapeKnob, &masterMixKnob })
+    {
+        k->caption.setFont (SF (kKnobCaptionFontSize));
+        k->valueLabel.setFont (SF (kKnobValueFontSize));
+    }
+
+    auto area = getLocalBounds().reduced (S (24));
+
+    auto header = area.removeFromTop (S (40));
+    logoLabel.setBounds (header.removeFromLeft (S (180)));
+
+    auto controls = header.removeFromRight (S (362));
+    keyFollowButton.setBounds (controls.removeFromRight (S (64)).withSizeKeepingCentre (S (58), S (24)));
+    controls.removeFromRight (S (6));
+    auto scaleRow = controls.removeFromLeft (S (148));
+    scaleCaption.setBounds (scaleRow.removeFromLeft (S (56)));
     scaleBox.setBounds (scaleRow);
     auto rootRow = controls;
-    rootCaption.setBounds (rootRow.removeFromLeft (50));
+    rootCaption.setBounds (rootRow.removeFromLeft (S (50)));
     rootBox.setBounds (rootRow);
 
     tunerLabel.setBounds (header);
 
-    area.removeFromTop (10);
+    area.removeFromTop (S (10));
 
-    auto presetRow = area.removeFromTop (26);
-    presetCaption.setBounds (presetRow.removeFromLeft (60));
-    presetBox.setBounds (presetRow.removeFromLeft (240));
+    auto presetRow = area.removeFromTop (S (26));
+    presetCaption.setBounds (presetRow.removeFromLeft (S (60)));
+    presetBox.setBounds (presetRow.removeFromLeft (S (240)));
 
-    area.removeFromTop (14);
+    area.removeFromTop (S (14));
 
-    auto footer = area.removeFromBottom (78);
-    sustainButton.setBounds (footer.removeFromRight (140).withSizeKeepingCentre (140, 32));
-    footer.removeFromRight (16);
+    auto footer = area.removeFromBottom (S (78));
+    sustainButton.setBounds (footer.removeFromRight (S (140)).withSizeKeepingCentre (S (140), S (32)));
+    footer.removeFromRight (S (16));
 
-    auto tapeSlot = footer.removeFromRight (72);
-    tapeKnob.valueLabel.setBounds (tapeSlot.removeFromBottom (13));
-    tapeKnob.caption.setBounds (tapeSlot.removeFromBottom (16));
+    auto tapeSlot = footer.removeFromRight (S (72));
+    tapeKnob.valueLabel.setBounds (tapeSlot.removeFromBottom (S (13)));
+    tapeKnob.caption.setBounds (tapeSlot.removeFromBottom (S (16)));
     tapeKnob.dial.setBounds (tapeSlot);
-    footer.removeFromRight (16);
+    footer.removeFromRight (S (16));
 
-    auto mixSlot = footer.removeFromRight (72);
-    masterMixKnob.valueLabel.setBounds (mixSlot.removeFromBottom (13));
-    masterMixKnob.caption.setBounds (mixSlot.removeFromBottom (16));
+    auto mixSlot = footer.removeFromRight (S (72));
+    masterMixKnob.valueLabel.setBounds (mixSlot.removeFromBottom (S (13)));
+    masterMixKnob.caption.setBounds (mixSlot.removeFromBottom (S (16)));
     masterMixKnob.dial.setBounds (mixSlot);
-    footer.removeFromRight (16);
+    footer.removeFromRight (S (16));
 
-    outputGainCaption.setBounds (footer.removeFromLeft (90).withSizeKeepingCentre (90, 24));
-    outputGainSlider.setBounds (footer.withSizeKeepingCentre (footer.getWidth(), 24));
+    outputGainCaption.setBounds (footer.removeFromLeft (S (90)).withSizeKeepingCentre (S (90), S (24)));
+    outputGainSlider.setBounds (footer.withSizeKeepingCentre (footer.getWidth(), S (24)));
 
-    area.removeFromBottom (16);
+    area.removeFromBottom (S (16));
 
-    auto detail = area.removeFromBottom (120);
-    area.removeFromBottom (12);
+    auto detail = area.removeFromBottom (S (120));
+    area.removeFromBottom (S (12));
 
-    auto syncStrip = area.removeFromBottom (58);
-    area.removeFromBottom (16);
+    auto syncStrip = area.removeFromBottom (S (58));
+    area.removeFromBottom (S (16));
 
     auto heroArea = area;
     const int numCols = 4;
-    const int gap = 20;
+    const int gap = S (20);
     const int colWidth = (heroArea.getWidth() - gap * (numCols - 1)) / numCols;
 
-    auto layoutHero = [] (HeroBar& hb, juce::Rectangle<int> col)
+    auto layoutHero = [S] (HeroBar& hb, juce::Rectangle<int> col)
     {
-        hb.header.setBounds (col.removeFromTop (26));
-        hb.valueLabel.setBounds (col.removeFromTop (16));
-        col.removeFromTop (6);
-        auto barArea = col.withSizeKeepingCentre (juce::jmin (col.getWidth(), 90), col.getHeight());
+        hb.header.setBounds (col.removeFromTop (S (26)));
+        hb.valueLabel.setBounds (col.removeFromTop (S (16)));
+        col.removeFromTop (S (6));
+        auto barArea = col.withSizeKeepingCentre (juce::jmin (col.getWidth(), S (90)), col.getHeight());
         hb.bar.setBounds (barArea);
     };
 
@@ -338,10 +451,10 @@ void BDCPluginAudioProcessorEditor::resized()
     auto d3 = detail.removeFromLeft (colWidth); detail.removeFromLeft (gap);
     auto d4 = detail;
 
-    auto layoutKnob = [] (Knob& k, juce::Rectangle<int> slot)
+    auto layoutKnob = [S] (Knob& k, juce::Rectangle<int> slot)
     {
-        k.valueLabel.setBounds (slot.removeFromBottom (13));
-        k.caption.setBounds (slot.removeFromBottom (16));
+        k.valueLabel.setBounds (slot.removeFromBottom (S (13)));
+        k.caption.setBounds (slot.removeFromBottom (S (16)));
         k.dial.setBounds (slot);
     };
 
@@ -363,20 +476,20 @@ void BDCPluginAudioProcessorEditor::resized()
         layoutKnob (chorusDepthKnob, d3);
     }
     {
-        rotaryFastLabel.setBounds (d4.removeFromBottom (16));
-        rotaryFastButton.setBounds (d4.withSizeKeepingCentre (juce::jmin (d4.getWidth(), 100), 32));
+        rotaryFastLabel.setBounds (d4.removeFromBottom (S (16)));
+        rotaryFastButton.setBounds (d4.withSizeKeepingCentre (juce::jmin (d4.getWidth(), S (100)), S (32)));
     }
 
     // Sync strip: SYNC + note division + x/÷ multiplier for Grain and
     // Delay (matching their hero-bar columns); a manual BPM fallback knob
     // sits under Rotary's column, where there's otherwise nothing to sync.
-    auto layoutSync = [] (SyncGroup& s, juce::Rectangle<int> slot)
+    auto layoutSync = [S] (SyncGroup& s, juce::Rectangle<int> slot)
     {
-        auto row = slot.withSizeKeepingCentre (slot.getWidth(), 28);
-        s.syncButton.setBounds (row.removeFromLeft (50));
-        row.removeFromLeft (4);
-        s.multiplierBox.setBounds (row.removeFromRight (50));
-        row.removeFromRight (4);
+        auto row = slot.withSizeKeepingCentre (slot.getWidth(), S (28));
+        s.syncButton.setBounds (row.removeFromLeft (S (50)));
+        row.removeFromLeft (S (4));
+        s.multiplierBox.setBounds (row.removeFromRight (S (50)));
+        row.removeFromRight (S (4));
         s.divisionBox.setBounds (row);
     };
 
@@ -389,7 +502,7 @@ void BDCPluginAudioProcessorEditor::resized()
     layoutSync (grainSync, sy1);
     layoutSync (delaySync, sy2);
 
-    manualBpmKnob.valueLabel.setBounds (sy4.removeFromBottom (13));
-    manualBpmKnob.caption.setBounds (sy4.removeFromBottom (16));
-    manualBpmKnob.dial.setBounds (sy4.withSizeKeepingCentre (juce::jmin (sy4.getWidth(), 44), sy4.getHeight()));
+    manualBpmKnob.valueLabel.setBounds (sy4.removeFromBottom (S (13)));
+    manualBpmKnob.caption.setBounds (sy4.removeFromBottom (S (16)));
+    manualBpmKnob.dial.setBounds (sy4.withSizeKeepingCentre (juce::jmin (sy4.getWidth(), S (44)), sy4.getHeight()));
 }

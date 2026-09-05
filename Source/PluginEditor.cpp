@@ -334,6 +334,17 @@ void BDCPluginAudioProcessorEditor::setupSyncGroup (SyncGroup& s, const juce::St
 void BDCPluginAudioProcessorEditor::paint (juce::Graphics& g)
 {
     g.fillAll (BDCLookAndFeel::background);
+
+    // Faint dividers reinforcing groupings that already exist in the layout
+    // (one column per effect; Output / tone macros / Sustain in the footer)
+    // - purely a scanability aid, nothing here changes what's clickable.
+    g.setColour (BDCLookAndFeel::ink.withAlpha (0.16f));
+
+    for (auto x : columnDividerX)
+        g.drawVerticalLine (x, (float) columnDividerTop, (float) columnDividerBottom);
+
+    for (auto x : footerDividerX)
+        g.drawVerticalLine (x, (float) footerDividerTop, (float) footerDividerBottom);
 }
 
 void BDCPluginAudioProcessorEditor::resized()
@@ -393,8 +404,13 @@ void BDCPluginAudioProcessorEditor::resized()
     area.removeFromTop (S (14));
 
     auto footer = area.removeFromBottom (S (78));
+    footerDividerTop = footer.getY() + S (4);
+    footerDividerBottom = footer.getBottom() - S (4);
+
     sustainButton.setBounds (footer.removeFromRight (S (140)).withSizeKeepingCentre (S (140), S (32)));
-    footer.removeFromRight (S (16));
+    footer.removeFromRight (S (16) / 2);
+    footerDividerX[1] = footer.getRight(); // Sustain | tone macros
+    footer.removeFromRight (S (16) / 2);
 
     auto tapeSlot = footer.removeFromRight (S (72));
     tapeKnob.valueLabel.setBounds (tapeSlot.removeFromBottom (S (13)));
@@ -412,7 +428,9 @@ void BDCPluginAudioProcessorEditor::resized()
     characterKnob.valueLabel.setBounds (characterSlot.removeFromBottom (S (13)));
     characterKnob.caption.setBounds (characterSlot.removeFromBottom (S (16)));
     characterKnob.dial.setBounds (characterSlot);
-    footer.removeFromRight (S (16));
+    footer.removeFromRight (S (16) / 2);
+    footerDividerX[0] = footer.getRight(); // tone macros | Output
+    footer.removeFromRight (S (16) / 2);
 
     outputGainCaption.setBounds (footer.removeFromLeft (S (90)).withSizeKeepingCentre (S (90), S (24)));
     outputGainSlider.setBounds (footer.withSizeKeepingCentre (footer.getWidth(), S (24)));
@@ -430,6 +448,9 @@ void BDCPluginAudioProcessorEditor::resized()
     const int gap = S (20);
     const int colWidth = (heroArea.getWidth() - gap * (numCols - 1)) / numCols;
 
+    columnDividerTop = heroArea.getY();
+    columnDividerBottom = syncStrip.getBottom();
+
     auto layoutHero = [S] (HeroBar& hb, juce::Rectangle<int> col)
     {
         hb.header.setBounds (col.removeFromTop (S (26)));
@@ -443,6 +464,10 @@ void BDCPluginAudioProcessorEditor::resized()
     auto col2 = heroArea.removeFromLeft (colWidth); heroArea.removeFromLeft (gap);
     auto col3 = heroArea.removeFromLeft (colWidth); heroArea.removeFromLeft (gap);
     auto col4 = heroArea;
+
+    columnDividerX[0] = col1.getRight() + gap / 2;
+    columnDividerX[1] = col2.getRight() + gap / 2;
+    columnDividerX[2] = col3.getRight() + gap / 2;
 
     layoutHero (grainBar, col1);
     layoutHero (delayBar, col2);

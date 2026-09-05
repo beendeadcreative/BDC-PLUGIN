@@ -107,5 +107,15 @@ private:
     juce::TextButton sustainButton { "SUSTAIN" };
     std::unique_ptr<ButtonAttachment> sustainAttachment;
 
+    // Thin divider lines drawn in paint() to visually separate the four
+    // effect columns (Grain/Delay/Chorus/Rotary) and the footer's control
+    // clusters (Output / tone macros / Sustain), purely for scanability -
+    // none of this affects layout, just where paint() strokes a line.
+    // Recomputed every resized() alongside the actual component bounds.
+    std::array<int, 3> columnDividerX { 0, 0, 0 };
+    int columnDividerTop = 0, columnDividerBottom = 0;
+    std::array<int, 2> footerDividerX { 0, 0 };
+    int footerDividerTop = 0, footerDividerBottom = 0;
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (BDCPluginAudioProcessorEditor)
 };

@@ -35,7 +35,7 @@ target_sources(BDCPlugin
         Source/PluginProcessor.cpp
         Source/PluginEditor.cpp
         Source/DSP/CircularBuffer.cpp
-        Source/DSP/SeedGenerator.cpp
+        Source/DSP/InputActivityDetector.cpp
         Source/DSP/GenerativeEngine.cpp
         Source/DSP/Granulator.cpp
         Source/DSP/ChorusModule.cpp

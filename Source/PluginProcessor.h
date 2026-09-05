@@ -2,7 +2,7 @@
 
 #include <JuceHeader.h>
 #include "DSP/CircularBuffer.h"
-#include "DSP/SeedGenerator.h"
+#include "DSP/InputActivityDetector.h"
 #include "DSP/GenerativeEngine.h"
 #include "DSP/Granulator.h"
 #include "DSP/ChorusModule.h"
@@ -47,7 +47,7 @@ private:
     GenerativeEngine::Scale scaleFor (int scaleChoiceIndex) const noexcept;
 
     // Cached parameter pointers, set once in the constructor.
-    juce::AudioParameterChoice* selfGenerateModeParam = nullptr;
+    juce::AudioParameterBool*   sustainOnSilenceParam = nullptr;
     juce::AudioParameterChoice* rootNoteParam = nullptr;
     juce::AudioParameterChoice* scaleTypeParam = nullptr;
     juce::AudioParameterBool*   rotaryFastParam = nullptr;
@@ -67,15 +67,17 @@ private:
     std::atomic<float>* outputGainDbParam = nullptr;
 
     CircularBuffer captureBuffer;
-    SeedGenerator seedGenerator;
+    InputActivityDetector inputActivityDetector;
     GenerativeEngine generativeEngine;
     Granulator granulator;
     ChorusModule chorusModule;
     RotaryModule rotaryModule;
     DelayModule delayModule;
 
-    juce::AudioBuffer<float> seedScratch;
-    juce::AudioBuffer<float> captureWriteScratch;
+    // Latches true the first time real audio is played in; generation stays
+    // silent until then, so the plugin never generates out of nothing.
+    bool hasBeenPrimed = false;
+
     juce::AudioBuffer<float> generatedScratch;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (BDCPluginAudioProcessor)

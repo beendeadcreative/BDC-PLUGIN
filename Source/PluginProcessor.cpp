@@ -3,7 +3,7 @@
 
 namespace ParamIDs
 {
-    static const juce::String selfGenerateMode { "selfGenerateMode" };
+    static const juce::String sustainOnSilence  { "sustainOnSilence" };
     static const juce::String rootNote          { "rootNote" };
     static const juce::String scaleType         { "scaleType" };
     static const juce::String unpredictability  { "unpredictability" };
@@ -28,7 +28,7 @@ BDCPluginAudioProcessor::BDCPluginAudioProcessor()
                         .withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
       apvts (*this, nullptr, "PARAMETERS", createParameterLayout())
 {
-    selfGenerateModeParam = dynamic_cast<juce::AudioParameterChoice*> (apvts.getParameter (ParamIDs::selfGenerateMode));
+    sustainOnSilenceParam = dynamic_cast<juce::AudioParameterBool*>   (apvts.getParameter (ParamIDs::sustainOnSilence));
     rootNoteParam         = dynamic_cast<juce::AudioParameterChoice*> (apvts.getParameter (ParamIDs::rootNote));
     scaleTypeParam        = dynamic_cast<juce::AudioParameterChoice*> (apvts.getParameter (ParamIDs::scaleType));
     rotaryFastParam       = dynamic_cast<juce::AudioParameterBool*>   (apvts.getParameter (ParamIDs::rotaryFast));
@@ -55,9 +55,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout BDCPluginAudioProcessor::cre
     using namespace juce;
     AudioProcessorValueTreeState::ParameterLayout layout;
 
-    layout.add (std::make_unique<AudioParameterChoice> (
-        ParameterID { ParamIDs::selfGenerateMode, 1 }, "Self-Generate",
-        StringArray { "Off", "Auto", "Always" }, 1));
+    layout.add (std::make_unique<AudioParameterBool> (
+        ParameterID { ParamIDs::sustainOnSilence, 1 }, "Sustain When Silent", true));
 
     layout.add (std::make_unique<AudioParameterChoice> (
         ParameterID { ParamIDs::rootNote, 1 }, "Root Note",
@@ -130,7 +129,8 @@ void BDCPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     const int numChannels = getTotalNumOutputChannels();
 
     captureBuffer.prepare (sampleRate, numChannels, 6.0f); // 6s of history available for spread/reads
-    seedGenerator.prepare (sampleRate, numChannels);
+    inputActivityDetector.prepare (sampleRate);
+    hasBeenPrimed = false;
     generativeEngine.reset();
     granulator.prepare (sampleRate, numChannels, samplesPerBlock);
 
@@ -143,8 +143,6 @@ void BDCPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     rotaryModule.prepare (spec);
     delayModule.prepare (spec);
 
-    seedScratch.setSize (numChannels, samplesPerBlock);
-    captureWriteScratch.setSize (numChannels, samplesPerBlock);
     generatedScratch.setSize (numChannels, samplesPerBlock);
 }
 
@@ -166,45 +164,23 @@ void BDCPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
     for (auto i = getTotalNumInputChannels(); i < getTotalNumOutputChannels(); ++i)
         buffer.clear (i, 0, numSamples);
 
-    seedScratch.setSize (numChannels, numSamples, false, false, true);
-    captureWriteScratch.setSize (numChannels, numSamples, false, false, true);
     generatedScratch.setSize (numChannels, numSamples, false, false, true);
 
     const int rootMidiNote = rootNoteMidiFor (rootNoteParam->getIndex());
     const auto scale = scaleFor (scaleTypeParam->getIndex());
-    const int selfGenMode = selfGenerateModeParam->getIndex(); // 0=Off,1=Auto,2=Always
 
-    // --- 1. Seed material + input presence -------------------------------
-    seedGenerator.setRootNote (rootMidiNote);
-    float inputPresence = seedGenerator.updateInputPresence (buffer, numSamples);
-    seedGenerator.process (seedScratch, numSamples);
+    // --- 1. Is anything actually being played right now? -------------------
+    const bool inputActive = inputActivityDetector.updateAndIsActive (buffer, numSamples);
+    if (inputActive)
+        hasBeenPrimed = true; // never generate until real audio has been played at least once
 
-    // --- 2. Decide what feeds the capture buffer this block ---------------
-    for (int ch = 0; ch < numChannels; ++ch)
-    {
-        auto* dry = buffer.getReadPointer (ch);
-        auto* seed = seedScratch.getReadPointer (ch);
-        auto* dst = captureWriteScratch.getWritePointer (ch);
-
-        for (int i = 0; i < numSamples; ++i)
-        {
-            switch (selfGenMode)
-            {
-                case 0: // Off: only ever use what's actually played
-                    dst[i] = dry[i];
-                    break;
-                case 2: // Always: constantly layer the self-generating pad under playing
-                    dst[i] = dry[i] + seed[i] * 0.4f;
-                    break;
-                case 1: // Auto: crossfade to the pad whenever nothing is being played
-                default:
-                    dst[i] = dry[i] * inputPresence + seed[i] * (1.0f - inputPresence);
-                    break;
-            }
-        }
-    }
-
-    captureBuffer.write (captureWriteScratch);
+    // --- 2. Feed the capture buffer -----------------------------------------
+    // While input is active, always capture the real signal. Once it goes
+    // silent: if "Sustain When Silent" is on, freeze the buffer (stop
+    // overwriting it) so generation keeps drawing on what was actually
+    // played; if off, silence flows in like normal and generation fades out.
+    if (inputActive || ! sustainOnSilenceParam->get())
+        captureBuffer.write (buffer);
 
     // --- 3. Generative granulator: turns captured material into new phrases
     generativeEngine.setRootNote (rootMidiNote);
@@ -214,7 +190,7 @@ void BDCPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
     granulator.setParameters (grainDensityParam->load(), grainSizeMsParam->load(), grainSpreadSecParam->load());
     granulator.process (captureBuffer, generativeEngine, generatedScratch, numSamples);
 
-    const float genMix = generativeMixParam->load();
+    const float genMix = hasBeenPrimed ? generativeMixParam->load() : 0.0f;
     for (int ch = 0; ch < numChannels; ++ch)
     {
         auto* dst = buffer.getWritePointer (ch);

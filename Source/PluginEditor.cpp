@@ -60,6 +60,14 @@ BDCPluginAudioProcessorEditor::BDCPluginAudioProcessorEditor (BDCPluginAudioProc
     setupKnob (chorusDepthKnob, "DEPTH", "chorusDepth",
         "Intensity of the chorus effect's modulation.");
 
+    setupSyncGroup (grainSync, "grainRateSync", "grainNoteDivision", "grainRateMultiplier",
+        "Locks the generator's note rate to the song tempo instead of the free Density knob. Pick a note value and optionally halve/quarter or double/quadruple it.");
+    setupSyncGroup (delaySync, "delaySync", "delayNoteDivision", "delayTimeMultiplier",
+        "Locks the delay time to the song tempo instead of the free Time knob. Pick a note value and optionally halve/quarter or double/quadruple it.");
+
+    setupKnob (manualBpmKnob, "BPM", "manualBpm",
+        "Manual tempo used for Sync when no host tempo is available (e.g. running Standalone with nothing playing).");
+
     rotaryFastLabel.setText ("SPEED", juce::dontSendNotification);
     rotaryFastLabel.setJustificationType (juce::Justification::centred);
     rotaryFastLabel.setFont (juce::Font (10.0f));
@@ -138,6 +146,27 @@ void BDCPluginAudioProcessorEditor::setupKnob (Knob& k, const juce::String& labe
     k.attachment = std::make_unique<SliderAttachment> (processorRef.apvts, paramID, k.dial);
 }
 
+void BDCPluginAudioProcessorEditor::setupSyncGroup (SyncGroup& s, const juce::String& syncParamID,
+                                                     const juce::String& divisionParamID,
+                                                     const juce::String& multiplierParamID,
+                                                     const juce::String& tooltip)
+{
+    s.syncButton.setClickingTogglesState (true);
+    s.syncButton.setTooltip (tooltip);
+    addAndMakeVisible (s.syncButton);
+    s.syncAttachment = std::make_unique<ButtonAttachment> (processorRef.apvts, syncParamID, s.syncButton);
+
+    s.divisionBox.addItemList ({ "1/1", "1/2", "1/4", "1/8", "1/16", "1/32", "1/4.", "1/8.", "1/16.", "1/4T", "1/8T", "1/16T" }, 1);
+    s.divisionBox.setTooltip ("Note value to sync to, when SYNC is on.");
+    addAndMakeVisible (s.divisionBox);
+    s.divisionAttachment = std::make_unique<ComboBoxAttachment> (processorRef.apvts, divisionParamID, s.divisionBox);
+
+    s.multiplierBox.addItemList ({ "/4", "/2", "x1", "x2", "x4" }, 1);
+    s.multiplierBox.setTooltip ("Divides or multiplies the synced note value - e.g. \"1/4\" + \"x4\" gives a four-bar-long time.");
+    addAndMakeVisible (s.multiplierBox);
+    s.multiplierAttachment = std::make_unique<ComboBoxAttachment> (processorRef.apvts, multiplierParamID, s.multiplierBox);
+}
+
 void BDCPluginAudioProcessorEditor::paint (juce::Graphics& g)
 {
     g.fillAll (BDCLookAndFeel::background);
@@ -177,7 +206,10 @@ void BDCPluginAudioProcessorEditor::resized()
     area.removeFromBottom (16);
 
     auto detail = area.removeFromBottom (120);
-    area.removeFromBottom (20);
+    area.removeFromBottom (12);
+
+    auto syncStrip = area.removeFromBottom (44);
+    area.removeFromBottom (16);
 
     auto heroArea = area;
     const int numCols = 4;
@@ -234,4 +266,29 @@ void BDCPluginAudioProcessorEditor::resized()
         rotaryFastLabel.setBounds (d4.removeFromBottom (16));
         rotaryFastButton.setBounds (d4.withSizeKeepingCentre (juce::jmin (d4.getWidth(), 100), 32));
     }
+
+    // Sync strip: SYNC + note division + x/÷ multiplier for Grain and
+    // Delay (matching their hero-bar columns); a manual BPM fallback knob
+    // sits under Rotary's column, where there's otherwise nothing to sync.
+    auto layoutSync = [] (SyncGroup& s, juce::Rectangle<int> slot)
+    {
+        auto row = slot.withSizeKeepingCentre (slot.getWidth(), 28);
+        s.syncButton.setBounds (row.removeFromLeft (50));
+        row.removeFromLeft (4);
+        s.multiplierBox.setBounds (row.removeFromRight (50));
+        row.removeFromRight (4);
+        s.divisionBox.setBounds (row);
+    };
+
+    auto sy1 = syncStrip.removeFromLeft (colWidth); syncStrip.removeFromLeft (gap);
+    auto sy2 = syncStrip.removeFromLeft (colWidth); syncStrip.removeFromLeft (gap);
+    auto sy3 = syncStrip.removeFromLeft (colWidth); syncStrip.removeFromLeft (gap);
+    auto sy4 = syncStrip;
+    juce::ignoreUnused (sy3);
+
+    layoutSync (grainSync, sy1);
+    layoutSync (delaySync, sy2);
+
+    manualBpmKnob.caption.setBounds (sy4.removeFromBottom (16));
+    manualBpmKnob.dial.setBounds (sy4.withSizeKeepingCentre (juce::jmin (sy4.getWidth(), 44), sy4.getHeight()));
 }

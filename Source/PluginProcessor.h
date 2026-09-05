@@ -53,11 +53,26 @@ private:
     int rootNoteMidiFor (int rootChoiceIndex) const noexcept { return 48 + rootChoiceIndex; }
     GenerativeEngine::Scale scaleFor (int scaleChoiceIndex) const noexcept;
 
+    // Host tempo if the DAW is reporting one, else the manual BPM fallback
+    // (used e.g. in Standalone with no transport).
+    double getCurrentBpm() const;
+
+    // Shared tempo-sync helpers used by both Delay and Grain sync.
+    static float noteDivisionToBeats (int divisionChoiceIndex) noexcept;
+    static float multiplierChoiceToValue (int multiplierChoiceIndex) noexcept;
+
     // Cached parameter pointers, set once in the constructor.
     juce::AudioParameterBool*   sustainOnSilenceParam = nullptr;
     juce::AudioParameterChoice* rootNoteParam = nullptr;
     juce::AudioParameterChoice* scaleTypeParam = nullptr;
     juce::AudioParameterBool*   rotaryFastParam = nullptr;
+
+    juce::AudioParameterBool*   delaySyncParam = nullptr;
+    juce::AudioParameterChoice* delayNoteDivisionParam = nullptr;
+    juce::AudioParameterChoice* delayTimeMultiplierParam = nullptr;
+    juce::AudioParameterBool*   grainRateSyncParam = nullptr;
+    juce::AudioParameterChoice* grainNoteDivisionParam = nullptr;
+    juce::AudioParameterChoice* grainRateMultiplierParam = nullptr;
 
     std::atomic<float>* unpredictabilityParam = nullptr;
     std::atomic<float>* grainDensityParam = nullptr;
@@ -73,6 +88,7 @@ private:
     std::atomic<float>* delayMixParam = nullptr;
     std::atomic<float>* tapeAmountParam = nullptr;
     std::atomic<float>* outputGainDbParam = nullptr;
+    std::atomic<float>* manualBpmParam = nullptr;
 
     CircularBuffer captureBuffer;
     InputActivityDetector inputActivityDetector;

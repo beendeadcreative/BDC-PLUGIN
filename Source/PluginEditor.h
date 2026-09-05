@@ -40,8 +40,20 @@ private:
         std::unique_ptr<SliderAttachment> attachment;
     };
 
+    struct SyncGroup
+    {
+        juce::TextButton syncButton { "SYNC" };
+        std::unique_ptr<ButtonAttachment> syncAttachment;
+        juce::ComboBox divisionBox;
+        std::unique_ptr<ComboBoxAttachment> divisionAttachment;
+        juce::ComboBox multiplierBox;
+        std::unique_ptr<ComboBoxAttachment> multiplierAttachment;
+    };
+
     void setupHeroBar (HeroBar&, const juce::String& labelText, const juce::String& paramID, const juce::String& tooltip);
     void setupKnob (Knob&, const juce::String& labelText, const juce::String& paramID, const juce::String& tooltip);
+    void setupSyncGroup (SyncGroup&, const juce::String& syncParamID, const juce::String& divisionParamID,
+                          const juce::String& multiplierParamID, const juce::String& tooltip);
 
     BDCPluginAudioProcessor& processorRef;
     BDCLookAndFeel lookAndFeel;
@@ -64,6 +76,9 @@ private:
     juce::Label rotaryFastLabel;
     juce::TextButton rotaryFastButton { "FAST" };
     std::unique_ptr<ButtonAttachment> rotaryFastAttachment;
+
+    SyncGroup grainSync, delaySync;
+    Knob manualBpmKnob;
 
     juce::Label outputGainCaption;
     juce::Slider outputGainSlider { juce::Slider::LinearBar, juce::Slider::NoTextBox };

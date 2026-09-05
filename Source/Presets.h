@@ -35,6 +35,7 @@ struct FactoryPresetValues
     float tapeAmount;         // 0-100
     float outputGainDb;       // -24..12
     float manualBpm;          // 40-300
+    bool keyFollow;           // when true, rootNote/scaleType above are just the starting guess
 };
 
 struct FactoryPreset

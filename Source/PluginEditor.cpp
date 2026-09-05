@@ -48,6 +48,11 @@ BDCPluginAudioProcessorEditor::BDCPluginAudioProcessorEditor (BDCPluginAudioProc
     addAndMakeVisible (rootBox);
     rootAttachment = std::make_unique<ComboBoxAttachment> (processorRef.apvts, "rootNote", rootBox);
 
+    keyFollowButton.setClickingTogglesState (true);
+    keyFollowButton.setTooltip ("When on, the generative engine follows the key of what you're playing automatically instead of the Scale/Root pickers above (which stay put, ready for when you turn this off).");
+    addAndMakeVisible (keyFollowButton);
+    keyFollowAttachment = std::make_unique<ButtonAttachment> (processorRef.apvts, "keyFollow", keyFollowButton);
+
     setupHeroBar (grainBar,  "GRAIN",  "generativeMix",
         "How much of the self-generated melody is mixed in with your dry signal.");
     setupHeroBar (delayBar,  "DELAY",  "delayMix",
@@ -104,6 +109,9 @@ BDCPluginAudioProcessorEditor::BDCPluginAudioProcessorEditor (BDCPluginAudioProc
     setupKnob (tapeKnob, "TAPE", "tapeAmount",
         "Runs the whole mix through emulated cassette 4-track character (Tascam Porta 02 MkII vibe): pitch wobble, dulled top end, saturation, and tape hiss. 0% is clean, 100% is fully lo-fi.");
 
+    setupKnob (masterMixKnob, "MIX", "masterMix",
+        "Overall dry/wet for everything combined - Grain, Chorus, Rotary, Delay, and Tape together. 0% is your untouched input, 100% is the fully processed signal (each effect's own mix still shapes how much of it there is within that 100%).");
+
     sustainButton.setClickingTogglesState (true);
     sustainButton.setTooltip ("When on, the generator keeps evolving off your last captured audio during silence instead of fading out. Generation never starts until you've actually played something in, either way.");
     addAndMakeVisible (sustainButton);
@@ -139,6 +147,33 @@ void BDCPluginAudioProcessorEditor::timerCallback()
     // combo box itself (e.g. the host's own preset menu, or session reload).
     if (presetBox.getSelectedItemIndex() != processorRef.getCurrentProgram())
         presetBox.setSelectedItemIndex (processorRef.getCurrentProgram(), juce::dontSendNotification);
+
+    // While Key Follow is on, the Scale/Root pickers aren't driving the
+    // sound - disable them and show the live tracked key instead. When it
+    // turns back off, hand control back and resync the display to the
+    // actual manual parameter values.
+    const bool keyFollowOn = keyFollowButton.getToggleState();
+    if (keyFollowOn)
+    {
+        static const char* rootNames[] { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
+        static const char* scaleNames[] { "Major", "Natural Minor", "Dorian", "Major Pentatonic", "Minor Pentatonic" };
+
+        rootBox.setEnabled (false);
+        scaleBox.setEnabled (false);
+        rootBox.setText (rootNames[processorRef.getTrackedRootPitchClass()], juce::dontSendNotification);
+        scaleBox.setText (scaleNames[processorRef.getTrackedScaleType()], juce::dontSendNotification);
+    }
+    else if (wasKeyFollowOn)
+    {
+        // Hand control back and resync the display to the actual manual
+        // parameter values (the attachment didn't repaint while we were
+        // overriding the text, since the parameter itself never changed).
+        rootBox.setEnabled (true);
+        scaleBox.setEnabled (true);
+        rootBox.setSelectedItemIndex (processorRef.getManualRootIndex(), juce::dontSendNotification);
+        scaleBox.setSelectedItemIndex (processorRef.getManualScaleIndex(), juce::dontSendNotification);
+    }
+    wasKeyFollowOn = keyFollowOn;
 }
 
 void BDCPluginAudioProcessorEditor::setupHeroBar (HeroBar& hb, const juce::String& labelText,
@@ -227,7 +262,9 @@ void BDCPluginAudioProcessorEditor::resized()
     auto header = area.removeFromTop (40);
     logoLabel.setBounds (header.removeFromLeft (180));
 
-    auto controls = header.removeFromRight (300);
+    auto controls = header.removeFromRight (344);
+    keyFollowButton.setBounds (controls.removeFromRight (44).withSizeKeepingCentre (40, 24));
+    controls.removeFromRight (6);
     auto scaleRow = controls.removeFromLeft (150);
     scaleCaption.setBounds (scaleRow.removeFromLeft (56));
     scaleBox.setBounds (scaleRow);
@@ -253,6 +290,12 @@ void BDCPluginAudioProcessorEditor::resized()
     tapeKnob.valueLabel.setBounds (tapeSlot.removeFromBottom (13));
     tapeKnob.caption.setBounds (tapeSlot.removeFromBottom (16));
     tapeKnob.dial.setBounds (tapeSlot);
+    footer.removeFromRight (16);
+
+    auto mixSlot = footer.removeFromRight (72);
+    masterMixKnob.valueLabel.setBounds (mixSlot.removeFromBottom (13));
+    masterMixKnob.caption.setBounds (mixSlot.removeFromBottom (16));
+    masterMixKnob.dial.setBounds (mixSlot);
     footer.removeFromRight (16);
 
     outputGainCaption.setBounds (footer.removeFromLeft (90).withSizeKeepingCentre (90, 24));

@@ -4,6 +4,7 @@
 #include "DSP/CircularBuffer.h"
 #include "DSP/InputActivityDetector.h"
 #include "DSP/PitchDetector.h"
+#include "DSP/KeyTracker.h"
 #include "DSP/GenerativeEngine.h"
 #include "DSP/Granulator.h"
 #include "DSP/ChorusModule.h"
@@ -47,6 +48,18 @@ public:
     float getDetectedFrequencyHz() const noexcept { return pitchDetector.getDetectedFrequencyHz(); }
     bool isPitchDetected() const noexcept { return pitchDetector.isPitchDetected(); }
 
+    // Key Follow's live tracked root/scale, for the editor to display while
+    // AUTO is on (0-11 pitch class, 0-4 scale index - same ordering as the
+    // Root/Scale parameters).
+    int getTrackedRootPitchClass() const noexcept { return keyTracker.getRootPitchClass(); }
+    int getTrackedScaleType() const noexcept { return keyTracker.getScaleType(); }
+
+    // The manually-selected Root/Scale (i.e. what's used when Key Follow is
+    // off), so the editor can resync its combo boxes when AUTO is switched
+    // off after having shown the tracked key instead.
+    int getManualRootIndex() const noexcept { return rootNoteParam->getIndex(); }
+    int getManualScaleIndex() const noexcept { return scaleTypeParam->getIndex(); }
+
     juce::AudioProcessorValueTreeState apvts;
 
 private:
@@ -68,6 +81,7 @@ private:
     juce::AudioParameterChoice* rootNoteParam = nullptr;
     juce::AudioParameterChoice* scaleTypeParam = nullptr;
     juce::AudioParameterBool*   rotaryFastParam = nullptr;
+    juce::AudioParameterBool*   keyFollowParam = nullptr;
 
     juce::AudioParameterBool*   delaySyncParam = nullptr;
     juce::AudioParameterChoice* delayNoteDivisionParam = nullptr;
@@ -91,10 +105,12 @@ private:
     std::atomic<float>* tapeAmountParam = nullptr;
     std::atomic<float>* outputGainDbParam = nullptr;
     std::atomic<float>* manualBpmParam = nullptr;
+    std::atomic<float>* masterMixParam = nullptr;
 
     CircularBuffer captureBuffer;
     InputActivityDetector inputActivityDetector;
     PitchDetector pitchDetector;
+    KeyTracker keyTracker;
     GenerativeEngine generativeEngine;
     Granulator granulator;
     ChorusModule chorusModule;
@@ -109,6 +125,7 @@ private:
     int currentProgramIndex = 0;
 
     juce::AudioBuffer<float> generatedScratch;
+    juce::AudioBuffer<float> masterDryScratch;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (BDCPluginAudioProcessor)
 };

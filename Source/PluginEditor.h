@@ -72,6 +72,10 @@ private:
     juce::ComboBox scaleBox, rootBox;
     std::unique_ptr<ComboBoxAttachment> scaleAttachment, rootAttachment;
 
+    juce::TextButton keyFollowButton { "AUTO" };
+    std::unique_ptr<ButtonAttachment> keyFollowAttachment;
+    bool wasKeyFollowOn = false;
+
     HeroBar grainBar, delayBar, chorusBar, rotaryBar;
 
     Knob grainDensityKnob, grainSizeKnob, grainSpreadKnob, unpredictabilityKnob;
@@ -90,6 +94,7 @@ private:
     std::unique_ptr<SliderAttachment> outputGainAttachment;
 
     Knob tapeKnob;
+    Knob masterMixKnob;
 
     juce::TextButton sustainButton { "SUSTAIN" };
     std::unique_ptr<ButtonAttachment> sustainAttachment;

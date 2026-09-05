@@ -29,6 +29,8 @@ namespace ParamIDs
     static const juce::String grainNoteDivision     { "grainNoteDivision" };
     static const juce::String grainRateMultiplier   { "grainRateMultiplier" };
     static const juce::String manualBpm             { "manualBpm" };
+    static const juce::String masterMix             { "masterMix" };
+    static const juce::String keyFollow             { "keyFollow" };
 }
 
 namespace TempoSync
@@ -59,6 +61,7 @@ BDCPluginAudioProcessor::BDCPluginAudioProcessor()
     rootNoteParam         = dynamic_cast<juce::AudioParameterChoice*> (apvts.getParameter (ParamIDs::rootNote));
     scaleTypeParam        = dynamic_cast<juce::AudioParameterChoice*> (apvts.getParameter (ParamIDs::scaleType));
     rotaryFastParam       = dynamic_cast<juce::AudioParameterBool*>   (apvts.getParameter (ParamIDs::rotaryFast));
+    keyFollowParam        = dynamic_cast<juce::AudioParameterBool*>   (apvts.getParameter (ParamIDs::keyFollow));
 
     delaySyncParam           = dynamic_cast<juce::AudioParameterBool*>   (apvts.getParameter (ParamIDs::delaySync));
     delayNoteDivisionParam   = dynamic_cast<juce::AudioParameterChoice*> (apvts.getParameter (ParamIDs::delayNoteDivision));
@@ -82,6 +85,7 @@ BDCPluginAudioProcessor::BDCPluginAudioProcessor()
     tapeAmountParam       = apvts.getRawParameterValue (ParamIDs::tapeAmount);
     outputGainDbParam     = apvts.getRawParameterValue (ParamIDs::outputGainDb);
     manualBpmParam        = apvts.getRawParameterValue (ParamIDs::manualBpm);
+    masterMixParam        = apvts.getRawParameterValue (ParamIDs::masterMix);
 }
 
 BDCPluginAudioProcessor::~BDCPluginAudioProcessor() = default;
@@ -239,6 +243,15 @@ juce::AudioProcessorValueTreeState::ParameterLayout BDCPluginAudioProcessor::cre
         AudioParameterFloatAttributes().withStringFromValueFunction (
             [] (float v, int) { return String ((int) std::round (v)) + " BPM"; })));
 
+    layout.add (std::make_unique<AudioParameterFloat> (
+        ParameterID { ParamIDs::masterMix, 1 }, "Mix",
+        NormalisableRange<float> (0.0f, 100.0f), 100.0f,
+        AudioParameterFloatAttributes().withStringFromValueFunction (
+            [] (float v, int) { return String ((int) std::round (v)) + "%"; })));
+
+    layout.add (std::make_unique<AudioParameterBool> (
+        ParameterID { ParamIDs::keyFollow, 1 }, "Key Follow", true));
+
     return layout;
 }
 
@@ -289,6 +302,8 @@ void BDCPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     captureBuffer.prepare (sampleRate, numChannels, 6.0f); // 6s of history available for spread/reads
     inputActivityDetector.prepare (sampleRate);
     pitchDetector.prepare (sampleRate);
+    keyTracker.prepare (sampleRate);
+    keyTracker.seedRootScale (rootNoteParam->getIndex(), scaleTypeParam->getIndex());
     hasBeenPrimed = false;
     generativeEngine.reset();
     granulator.prepare (sampleRate, numChannels, samplesPerBlock);
@@ -304,6 +319,7 @@ void BDCPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     tapeModule.prepare (spec);
 
     generatedScratch.setSize (numChannels, samplesPerBlock);
+    masterDryScratch.setSize (numChannels, samplesPerBlock);
 }
 
 void BDCPluginAudioProcessor::releaseResources() {}
@@ -326,8 +342,11 @@ void BDCPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
 
     generatedScratch.setSize (numChannels, numSamples, false, false, true);
 
-    const int rootMidiNote = rootNoteMidiFor (rootNoteParam->getIndex());
-    const auto scale = scaleFor (scaleTypeParam->getIndex());
+    // Pristine dry copy for the master Mix knob, taken before anything else
+    // touches the signal.
+    masterDryScratch.setSize (numChannels, numSamples, false, false, true);
+    for (int ch = 0; ch < numChannels; ++ch)
+        masterDryScratch.copyFrom (ch, 0, buffer, ch, 0, numSamples);
 
     // --- 1. Is anything actually being played right now? -------------------
     const bool inputActive = inputActivityDetector.updateAndIsActive (buffer, numSamples);
@@ -337,6 +356,17 @@ void BDCPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
     // Live tuner: analyze the pristine dry input, before anything below
     // starts blending in generated/effected material.
     pitchDetector.process (buffer, numSamples);
+    keyTracker.update (pitchDetector.isPitchDetected(), pitchDetector.getDetectedFrequencyHz(), numSamples);
+
+    // Key Follow: use the tracked key from what's being played instead of
+    // the manual Root/Scale controls.
+    int rootMidiNote = rootNoteMidiFor (rootNoteParam->getIndex());
+    auto scale = scaleFor (scaleTypeParam->getIndex());
+    if (keyFollowParam->get())
+    {
+        rootMidiNote = 48 + keyTracker.getRootPitchClass();
+        scale = scaleFor (keyTracker.getScaleType());
+    }
 
     // --- 2. Feed the capture buffer -----------------------------------------
     // While input is active, always capture the real signal. Once it goes
@@ -398,7 +428,20 @@ void BDCPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
     tapeModule.setAmount (tapeAmountParam->load() * 0.01f);
     tapeModule.process (buffer);
 
-    // --- 6. Output trim ------------------------------------------------
+    // --- 6. Master Mix: blend the fully-processed signal back with the
+    // pristine dry input - one knob for everything combined, on top of
+    // (not instead of) each effect's own individual mix.
+    const float masterMix = masterMixParam->load() * 0.01f;
+    for (int ch = 0; ch < numChannels; ++ch)
+    {
+        auto* wet = buffer.getWritePointer (ch);
+        auto* dry = masterDryScratch.getReadPointer (ch);
+
+        for (int i = 0; i < numSamples; ++i)
+            wet[i] = dry[i] * (1.0f - masterMix) + wet[i] * masterMix;
+    }
+
+    // --- 7. Output trim ------------------------------------------------
     buffer.applyGain (juce::Decibels::decibelsToGain (outputGainDbParam->load()));
 }
 

@@ -45,6 +45,7 @@ target_sources(BDCPlugin
         Source/DSP/ChorusModule.cpp
         Source/DSP/RotaryModule.cpp
         Source/DSP/DelayModule.cpp
+        Source/DSP/TapeModule.cpp
 )
 
 target_compile_definitions(BDCPlugin

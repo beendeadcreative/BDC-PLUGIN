@@ -77,6 +77,9 @@ BDCPluginAudioProcessorEditor::BDCPluginAudioProcessorEditor (BDCPluginAudioProc
     addAndMakeVisible (outputGainSlider);
     outputGainAttachment = std::make_unique<SliderAttachment> (processorRef.apvts, "outputGainDb", outputGainSlider);
 
+    setupKnob (tapeKnob, "TAPE", "tapeAmount",
+        "Runs the whole mix through emulated cassette 4-track character (Tascam Porta 02 MkII vibe): pitch wobble, dulled top end, saturation, and tape hiss. 0% is clean, 100% is fully lo-fi.");
+
     sustainButton.setClickingTogglesState (true);
     sustainButton.setTooltip ("When on, the generator keeps evolving off your last captured audio during silence instead of fading out. Generation never starts until you've actually played something in, either way.");
     addAndMakeVisible (sustainButton);
@@ -159,11 +162,17 @@ void BDCPluginAudioProcessorEditor::resized()
 
     area.removeFromTop (20);
 
-    auto footer = area.removeFromBottom (44);
-    sustainButton.setBounds (footer.removeFromRight (140));
-    footer.removeFromRight (12);
-    outputGainCaption.setBounds (footer.removeFromLeft (90));
-    outputGainSlider.setBounds (footer);
+    auto footer = area.removeFromBottom (64);
+    sustainButton.setBounds (footer.removeFromRight (140).withSizeKeepingCentre (140, 32));
+    footer.removeFromRight (16);
+
+    auto tapeSlot = footer.removeFromRight (72);
+    tapeKnob.caption.setBounds (tapeSlot.removeFromBottom (16));
+    tapeKnob.dial.setBounds (tapeSlot);
+    footer.removeFromRight (16);
+
+    outputGainCaption.setBounds (footer.removeFromLeft (90).withSizeKeepingCentre (90, 24));
+    outputGainSlider.setBounds (footer.withSizeKeepingCentre (footer.getWidth(), 24));
 
     area.removeFromBottom (16);
 

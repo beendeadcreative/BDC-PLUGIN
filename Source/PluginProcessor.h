@@ -9,6 +9,7 @@
 #include "DSP/ChorusModule.h"
 #include "DSP/RotaryModule.h"
 #include "DSP/DelayModule.h"
+#include "DSP/TapeModule.h"
 
 class BDCPluginAudioProcessor : public juce::AudioProcessor
 {
@@ -70,6 +71,7 @@ private:
     std::atomic<float>* delayTimeMsParam = nullptr;
     std::atomic<float>* delayFeedbackParam = nullptr;
     std::atomic<float>* delayMixParam = nullptr;
+    std::atomic<float>* tapeAmountParam = nullptr;
     std::atomic<float>* outputGainDbParam = nullptr;
 
     CircularBuffer captureBuffer;
@@ -80,6 +82,7 @@ private:
     ChorusModule chorusModule;
     RotaryModule rotaryModule;
     DelayModule delayModule;
+    TapeModule tapeModule;
 
     // Latches true the first time real audio is played in; generation stays
     // silent until then, so the plugin never generates out of nothing.

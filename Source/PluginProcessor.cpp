@@ -19,6 +19,7 @@ namespace ParamIDs
     static const juce::String delayTimeMs       { "delayTimeMs" };
     static const juce::String delayFeedback     { "delayFeedback" };
     static const juce::String delayMix          { "delayMix" };
+    static const juce::String tapeAmount        { "tapeAmount" };
     static const juce::String outputGainDb      { "outputGainDb" };
 }
 
@@ -45,6 +46,7 @@ BDCPluginAudioProcessor::BDCPluginAudioProcessor()
     delayTimeMsParam      = apvts.getRawParameterValue (ParamIDs::delayTimeMs);
     delayFeedbackParam    = apvts.getRawParameterValue (ParamIDs::delayFeedback);
     delayMixParam         = apvts.getRawParameterValue (ParamIDs::delayMix);
+    tapeAmountParam       = apvts.getRawParameterValue (ParamIDs::tapeAmount);
     outputGainDbParam     = apvts.getRawParameterValue (ParamIDs::outputGainDb);
 }
 
@@ -106,6 +108,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout BDCPluginAudioProcessor::cre
         ParameterID { ParamIDs::delayMix, 1 }, "Delay Mix", 0.0f, 1.0f, 0.3f));
 
     layout.add (std::make_unique<AudioParameterFloat> (
+        ParameterID { ParamIDs::tapeAmount, 1 }, "Tape", 0.0f, 100.0f, 0.0f));
+
+    layout.add (std::make_unique<AudioParameterFloat> (
         ParameterID { ParamIDs::outputGainDb, 1 }, "Output Gain (dB)", -24.0f, 12.0f, 0.0f));
 
     return layout;
@@ -143,6 +148,7 @@ void BDCPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     chorusModule.prepare (spec);
     rotaryModule.prepare (spec);
     delayModule.prepare (spec);
+    tapeModule.prepare (spec);
 
     generatedScratch.setSize (numChannels, samplesPerBlock);
 }
@@ -215,7 +221,11 @@ void BDCPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
     delayModule.setParameters (delayTimeMsParam->load(), delayFeedbackParam->load(), delayMixParam->load());
     delayModule.process (buffer);
 
-    // --- 5. Output trim ------------------------------------------------
+    // --- 5. Tape: as if the whole mix were bounced through a cassette 4-track
+    tapeModule.setAmount (tapeAmountParam->load() * 0.01f);
+    tapeModule.process (buffer);
+
+    // --- 6. Output trim ------------------------------------------------
     buffer.applyGain (juce::Decibels::decibelsToGain (outputGainDbParam->load()));
 }
 

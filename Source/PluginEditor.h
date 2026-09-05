@@ -69,6 +69,8 @@ private:
     juce::Slider outputGainSlider { juce::Slider::LinearBar, juce::Slider::NoTextBox };
     std::unique_ptr<SliderAttachment> outputGainAttachment;
 
+    Knob tapeKnob;
+
     juce::TextButton sustainButton { "SUSTAIN" };
     std::unique_ptr<ButtonAttachment> sustainAttachment;
 

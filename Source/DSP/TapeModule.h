@@ -2,11 +2,14 @@
 
 #include <JuceHeader.h>
 
-// Cassette 4-track emulation (Tascam Porta 02 MkII vibe): a single 0-1
-// "amount" continuously scales tape wow/flutter pitch wobble, a
-// dulled/boxy frequency response, soft saturation, and tape hiss - fully
-// transparent at 0, fully lo-fi cassette-colored at 1. Meant to sit at the
-// end of the chain, as if the whole mix were bounced to tape.
+// Cassette 4-track emulation (Tascam Porta 02 MkII vibe, leaning warm -
+// closer to 1960s AM radio than crisp hi-fi tape): a single 0-1 "amount"
+// continuously scales tape wow/flutter pitch wobble, a warm/boxy narrow-
+// band frequency response, asymmetric (even-harmonic) saturation, a warm
+// lowpassed hiss bed, and the occasional brief volume dropout that gives
+// worn tape/old-radio playback its glitchy, physical feel - fully
+// transparent at 0, fully lo-fi at 1. Meant to sit at the end of the
+// chain, as if the whole mix were bounced to tape.
 class TapeModule
 {
 public:
@@ -39,4 +42,13 @@ private:
 
     float noiseLowpassAlpha = 1.0f;
     juce::Random noiseRandom { 3 };
+
+    // Tape dropouts: brief random volume dips like a worn tape losing head
+    // contact for a moment, giving the static a "glitchy," physical feel
+    // rather than a constant, unchanging noise floor.
+    double samplesUntilNextDropout = 0.0;
+    int dropoutSamplesRemaining = 0;
+    int dropoutTotalSamples = 1;
+    float dropoutDepth = 0.0f;
+    juce::Random dropoutRandom { 5 };
 };

@@ -38,6 +38,7 @@ private:
         juce::Label caption;
         juce::Slider dial { juce::Slider::RotaryVerticalDrag, juce::Slider::NoTextBox };
         std::unique_ptr<SliderAttachment> attachment;
+        juce::Label valueLabel; // live numeric readout, shown below the caption
     };
 
     struct SyncGroup

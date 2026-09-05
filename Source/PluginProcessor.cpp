@@ -102,16 +102,28 @@ juce::AudioProcessorValueTreeState::ParameterLayout BDCPluginAudioProcessor::cre
         StringArray { "Major", "Natural Minor", "Dorian", "Major Pentatonic", "Minor Pentatonic" }, 4));
 
     layout.add (std::make_unique<AudioParameterFloat> (
-        ParameterID { ParamIDs::unpredictability, 1 }, "Unpredictability", 0.0f, 1.0f, 0.18f));
+        ParameterID { ParamIDs::unpredictability, 1 }, "Unpredictability",
+        NormalisableRange<float> (0.0f, 1.0f), 0.18f,
+        AudioParameterFloatAttributes().withStringFromValueFunction (
+            [] (float v, int) { return String ((int) std::round (v * 100.0f)) + "%"; })));
 
     layout.add (std::make_unique<AudioParameterFloat> (
-        ParameterID { ParamIDs::grainDensity, 1 }, "Grain Density", 0.5f, 30.0f, 4.5f));
+        ParameterID { ParamIDs::grainDensity, 1 }, "Grain Density",
+        NormalisableRange<float> (0.5f, 30.0f), 4.5f,
+        AudioParameterFloatAttributes().withStringFromValueFunction (
+            [] (float v, int) { return String (v, 1) + " Hz"; })));
 
     layout.add (std::make_unique<AudioParameterFloat> (
-        ParameterID { ParamIDs::grainSizeMs, 1 }, "Grain Size (ms)", 20.0f, 500.0f, 170.0f));
+        ParameterID { ParamIDs::grainSizeMs, 1 }, "Grain Size (ms)",
+        NormalisableRange<float> (20.0f, 500.0f), 170.0f,
+        AudioParameterFloatAttributes().withStringFromValueFunction (
+            [] (float v, int) { return String ((int) std::round (v)) + " ms"; })));
 
     layout.add (std::make_unique<AudioParameterFloat> (
-        ParameterID { ParamIDs::grainSpreadSec, 1 }, "Grain Spread (s)", 0.1f, 4.0f, 2.0f));
+        ParameterID { ParamIDs::grainSpreadSec, 1 }, "Grain Spread (s)",
+        NormalisableRange<float> (0.1f, 4.0f), 2.0f,
+        AudioParameterFloatAttributes().withStringFromValueFunction (
+            [] (float v, int) { return String (v, 2) + " s"; })));
 
     layout.add (std::make_unique<AudioParameterBool> (
         ParameterID { ParamIDs::grainRateSync, 1 }, "Grain Rate Sync", false));
@@ -126,10 +138,16 @@ juce::AudioProcessorValueTreeState::ParameterLayout BDCPluginAudioProcessor::cre
         ParameterID { ParamIDs::generativeMix, 1 }, "Generative Mix", 0.0f, 1.0f, 0.5f));
 
     layout.add (std::make_unique<AudioParameterFloat> (
-        ParameterID { ParamIDs::chorusRate, 1 }, "Chorus Rate", 0.05f, 2.5f, 0.6f));
+        ParameterID { ParamIDs::chorusRate, 1 }, "Chorus Rate",
+        NormalisableRange<float> (0.05f, 2.5f), 0.6f,
+        AudioParameterFloatAttributes().withStringFromValueFunction (
+            [] (float v, int) { return String (v, 2) + " Hz"; })));
 
     layout.add (std::make_unique<AudioParameterFloat> (
-        ParameterID { ParamIDs::chorusDepth, 1 }, "Chorus Depth", 0.0f, 1.0f, 0.3f));
+        ParameterID { ParamIDs::chorusDepth, 1 }, "Chorus Depth",
+        NormalisableRange<float> (0.0f, 1.0f), 0.3f,
+        AudioParameterFloatAttributes().withStringFromValueFunction (
+            [] (float v, int) { return String ((int) std::round (v * 100.0f)) + "%"; })));
 
     layout.add (std::make_unique<AudioParameterFloat> (
         ParameterID { ParamIDs::chorusMix, 1 }, "Chorus Mix", 0.0f, 1.0f, 0.25f));
@@ -141,10 +159,16 @@ juce::AudioProcessorValueTreeState::ParameterLayout BDCPluginAudioProcessor::cre
         ParameterID { ParamIDs::rotaryMix, 1 }, "Rotary Mix", 0.0f, 1.0f, 0.4f));
 
     layout.add (std::make_unique<AudioParameterFloat> (
-        ParameterID { ParamIDs::delayTimeMs, 1 }, "Delay Time (ms)", 1.0f, 2000.0f, 350.0f));
+        ParameterID { ParamIDs::delayTimeMs, 1 }, "Delay Time (ms)",
+        NormalisableRange<float> (1.0f, 2000.0f), 350.0f,
+        AudioParameterFloatAttributes().withStringFromValueFunction (
+            [] (float v, int) { return String ((int) std::round (v)) + " ms"; })));
 
     layout.add (std::make_unique<AudioParameterFloat> (
-        ParameterID { ParamIDs::delayFeedback, 1 }, "Delay Feedback", 0.0f, 0.95f, 0.35f));
+        ParameterID { ParamIDs::delayFeedback, 1 }, "Delay Feedback",
+        NormalisableRange<float> (0.0f, 0.95f), 0.35f,
+        AudioParameterFloatAttributes().withStringFromValueFunction (
+            [] (float v, int) { return String ((int) std::round (v * 100.0f)) + "%"; })));
 
     layout.add (std::make_unique<AudioParameterFloat> (
         ParameterID { ParamIDs::delayMix, 1 }, "Delay Mix", 0.0f, 1.0f, 0.3f));
@@ -159,13 +183,19 @@ juce::AudioProcessorValueTreeState::ParameterLayout BDCPluginAudioProcessor::cre
         ParameterID { ParamIDs::delayTimeMultiplier, 1 }, "Delay Time Multiplier", TempoSync::multiplierChoices, 2));
 
     layout.add (std::make_unique<AudioParameterFloat> (
-        ParameterID { ParamIDs::tapeAmount, 1 }, "Tape", 0.0f, 100.0f, 0.0f));
+        ParameterID { ParamIDs::tapeAmount, 1 }, "Tape",
+        NormalisableRange<float> (0.0f, 100.0f), 0.0f,
+        AudioParameterFloatAttributes().withStringFromValueFunction (
+            [] (float v, int) { return String ((int) std::round (v)) + "%"; })));
 
     layout.add (std::make_unique<AudioParameterFloat> (
         ParameterID { ParamIDs::outputGainDb, 1 }, "Output Gain (dB)", -24.0f, 12.0f, 0.0f));
 
     layout.add (std::make_unique<AudioParameterFloat> (
-        ParameterID { ParamIDs::manualBpm, 1 }, "Manual BPM", 40.0f, 300.0f, 120.0f));
+        ParameterID { ParamIDs::manualBpm, 1 }, "Manual BPM",
+        NormalisableRange<float> (40.0f, 300.0f), 120.0f,
+        AudioParameterFloatAttributes().withStringFromValueFunction (
+            [] (float v, int) { return String ((int) std::round (v)) + " BPM"; })));
 
     return layout;
 }

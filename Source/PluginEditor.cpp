@@ -141,9 +141,24 @@ void BDCPluginAudioProcessorEditor::setupKnob (Knob& k, const juce::String& labe
     k.caption.setFont (juce::Font (10.0f));
     addAndMakeVisible (k.caption);
 
+    k.valueLabel.setJustificationType (juce::Justification::centred);
+    k.valueLabel.setFont (juce::Font (9.0f));
+    addAndMakeVisible (k.valueLabel);
+
     k.dial.setTooltip (tooltip);
     addAndMakeVisible (k.dial);
     k.attachment = std::make_unique<SliderAttachment> (processorRef.apvts, paramID, k.dial);
+
+    // Keep the value readout in sync with drags AND host/automation-driven
+    // changes (the APVTS attachment updates the slider with a notifying
+    // setValue(), so onValueChange fires either way).
+    if (auto* param = processorRef.apvts.getParameter (paramID))
+    {
+        juce::Label* label = &k.valueLabel;
+        auto updateText = [label, param] { label->setText (param->getCurrentValueAsText(), juce::dontSendNotification); };
+        k.dial.onValueChange = updateText;
+        updateText();
+    }
 }
 
 void BDCPluginAudioProcessorEditor::setupSyncGroup (SyncGroup& s, const juce::String& syncParamID,
@@ -191,11 +206,12 @@ void BDCPluginAudioProcessorEditor::resized()
 
     area.removeFromTop (20);
 
-    auto footer = area.removeFromBottom (64);
+    auto footer = area.removeFromBottom (78);
     sustainButton.setBounds (footer.removeFromRight (140).withSizeKeepingCentre (140, 32));
     footer.removeFromRight (16);
 
     auto tapeSlot = footer.removeFromRight (72);
+    tapeKnob.valueLabel.setBounds (tapeSlot.removeFromBottom (13));
     tapeKnob.caption.setBounds (tapeSlot.removeFromBottom (16));
     tapeKnob.dial.setBounds (tapeSlot);
     footer.removeFromRight (16);
@@ -208,7 +224,7 @@ void BDCPluginAudioProcessorEditor::resized()
     auto detail = area.removeFromBottom (120);
     area.removeFromBottom (12);
 
-    auto syncStrip = area.removeFromBottom (44);
+    auto syncStrip = area.removeFromBottom (58);
     area.removeFromBottom (16);
 
     auto heroArea = area;
@@ -241,6 +257,7 @@ void BDCPluginAudioProcessorEditor::resized()
 
     auto layoutKnob = [] (Knob& k, juce::Rectangle<int> slot)
     {
+        k.valueLabel.setBounds (slot.removeFromBottom (13));
         k.caption.setBounds (slot.removeFromBottom (16));
         k.dial.setBounds (slot);
     };
@@ -289,6 +306,7 @@ void BDCPluginAudioProcessorEditor::resized()
     layoutSync (grainSync, sy1);
     layoutSync (delaySync, sy2);
 
+    manualBpmKnob.valueLabel.setBounds (sy4.removeFromBottom (13));
     manualBpmKnob.caption.setBounds (sy4.removeFromBottom (16));
     manualBpmKnob.dial.setBounds (sy4.withSizeKeepingCentre (juce::jmin (sy4.getWidth(), 44), sy4.getHeight()));
 }

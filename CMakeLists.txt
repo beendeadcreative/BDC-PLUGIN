@@ -39,6 +39,7 @@ target_sources(BDCPlugin
         Source/UI/BDCLookAndFeel.cpp
         Source/DSP/CircularBuffer.cpp
         Source/DSP/InputActivityDetector.cpp
+        Source/DSP/PitchDetector.cpp
         Source/DSP/GenerativeEngine.cpp
         Source/DSP/Granulator.cpp
         Source/DSP/ChorusModule.cpp

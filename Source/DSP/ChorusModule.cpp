@@ -14,9 +14,12 @@ void ChorusModule::reset()
 void ChorusModule::setParameters (float rateHz, float depth01, float mix01)
 {
     chorus.setRate (rateHz);
-    chorus.setDepth (depth01);
+    // JUCE's raw depth range swings into audibly-dissonant "out of tune"
+    // pitch modulation well before the knob reaches halfway; scale it down
+    // so the full range stays in lush-chorus territory instead.
+    chorus.setDepth (depth01 * 0.45f);
     chorus.setCentreDelay (7.0f);
-    chorus.setFeedback (0.15f);
+    chorus.setFeedback (0.1f);
     chorus.setMix (mix01);
 }
 

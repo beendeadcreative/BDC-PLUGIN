@@ -82,7 +82,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout BDCPluginAudioProcessor::cre
         ParameterID { ParamIDs::generativeMix, 1 }, "Generative Mix", 0.0f, 1.0f, 0.5f));
 
     layout.add (std::make_unique<AudioParameterFloat> (
-        ParameterID { ParamIDs::chorusRate, 1 }, "Chorus Rate", 0.05f, 5.0f, 0.9f));
+        ParameterID { ParamIDs::chorusRate, 1 }, "Chorus Rate", 0.05f, 2.5f, 0.6f));
 
     layout.add (std::make_unique<AudioParameterFloat> (
         ParameterID { ParamIDs::chorusDepth, 1 }, "Chorus Depth", 0.0f, 1.0f, 0.3f));
@@ -130,6 +130,7 @@ void BDCPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
 
     captureBuffer.prepare (sampleRate, numChannels, 6.0f); // 6s of history available for spread/reads
     inputActivityDetector.prepare (sampleRate);
+    pitchDetector.prepare (sampleRate);
     hasBeenPrimed = false;
     generativeEngine.reset();
     granulator.prepare (sampleRate, numChannels, samplesPerBlock);
@@ -173,6 +174,10 @@ void BDCPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
     const bool inputActive = inputActivityDetector.updateAndIsActive (buffer, numSamples);
     if (inputActive)
         hasBeenPrimed = true; // never generate until real audio has been played at least once
+
+    // Live tuner: analyze the pristine dry input, before anything below
+    // starts blending in generated/effected material.
+    pitchDetector.process (buffer, numSamples);
 
     // --- 2. Feed the capture buffer -----------------------------------------
     // While input is active, always capture the real signal. Once it goes

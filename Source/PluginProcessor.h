@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 #include "DSP/CircularBuffer.h"
 #include "DSP/InputActivityDetector.h"
+#include "DSP/PitchDetector.h"
 #include "DSP/GenerativeEngine.h"
 #include "DSP/Granulator.h"
 #include "DSP/ChorusModule.h"
@@ -38,6 +39,11 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
+    // Live tuner readout, polled by the editor's Timer - safe to call from
+    // the message thread while the audio thread keeps updating it.
+    float getDetectedFrequencyHz() const noexcept { return pitchDetector.getDetectedFrequencyHz(); }
+    bool isPitchDetected() const noexcept { return pitchDetector.isPitchDetected(); }
+
     juce::AudioProcessorValueTreeState apvts;
 
 private:
@@ -68,6 +74,7 @@ private:
 
     CircularBuffer captureBuffer;
     InputActivityDetector inputActivityDetector;
+    PitchDetector pitchDetector;
     GenerativeEngine generativeEngine;
     Granulator granulator;
     ChorusModule chorusModule;

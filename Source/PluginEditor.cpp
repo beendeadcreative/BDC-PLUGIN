@@ -10,6 +10,12 @@ BDCPluginAudioProcessorEditor::BDCPluginAudioProcessorEditor (BDCPluginAudioProc
     logoLabel.setJustificationType (juce::Justification::centredLeft);
     addAndMakeVisible (logoLabel);
 
+    tunerLabel.setText ("--", juce::dontSendNotification);
+    tunerLabel.setFont (juce::Font (22.0f));
+    tunerLabel.setJustificationType (juce::Justification::centred);
+    tunerLabel.setTooltip ("Live tuner: shows the nearest note to what you're playing and how many cents sharp (+) or flat (-) you are.");
+    addAndMakeVisible (tunerLabel);
+
     scaleCaption.setText ("SCALE:", juce::dontSendNotification);
     scaleCaption.setFont (juce::Font (12.0f));
     addAndMakeVisible (scaleCaption);
@@ -77,11 +83,30 @@ BDCPluginAudioProcessorEditor::BDCPluginAudioProcessorEditor (BDCPluginAudioProc
     sustainAttachment = std::make_unique<ButtonAttachment> (processorRef.apvts, "sustainOnSilence", sustainButton);
 
     setSize (860, 620);
+    startTimerHz (20);
 }
 
 BDCPluginAudioProcessorEditor::~BDCPluginAudioProcessorEditor()
 {
+    stopTimer();
     setLookAndFeel (nullptr);
+}
+
+void BDCPluginAudioProcessorEditor::timerCallback()
+{
+    if (processorRef.isPitchDetected())
+    {
+        auto note = PitchDetector::frequencyToNote (processorRef.getDetectedFrequencyHz());
+        juce::String centsText = (note.cents > 0 ? "+" : "") + juce::String (note.cents) + "c";
+        tunerLabel.setText (note.name + "   " + centsText, juce::dontSendNotification);
+        tunerLabel.setColour (juce::Label::textColourId,
+                               std::abs (note.cents) <= 5 ? BDCLookAndFeel::ink : BDCLookAndFeel::text);
+    }
+    else
+    {
+        tunerLabel.setText ("--", juce::dontSendNotification);
+        tunerLabel.setColour (juce::Label::textColourId, BDCLookAndFeel::text);
+    }
 }
 
 void BDCPluginAudioProcessorEditor::setupHeroBar (HeroBar& hb, const juce::String& labelText,
@@ -129,6 +154,8 @@ void BDCPluginAudioProcessorEditor::resized()
     auto rootRow = controls;
     rootCaption.setBounds (rootRow.removeFromLeft (50));
     rootBox.setBounds (rootRow);
+
+    tunerLabel.setBounds (header);
 
     area.removeFromTop (20);
 

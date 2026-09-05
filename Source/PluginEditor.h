@@ -8,7 +8,8 @@
 // readouts up top, four tall "bar" sliders (Grain/Delay/Chorus/Rotary) as
 // the hero controls, and a compact strip of secondary knobs below so every
 // parameter stays reachable without cluttering the main view.
-class BDCPluginAudioProcessorEditor : public juce::AudioProcessorEditor
+class BDCPluginAudioProcessorEditor : public juce::AudioProcessorEditor,
+                                       private juce::Timer
 {
 public:
     explicit BDCPluginAudioProcessorEditor (BDCPluginAudioProcessor&);
@@ -16,6 +17,9 @@ public:
 
     void paint (juce::Graphics&) override;
     void resized() override;
+
+private:
+    void timerCallback() override;
 
 private:
     using SliderAttachment = juce::AudioProcessorValueTreeState::SliderAttachment;
@@ -44,6 +48,8 @@ private:
     juce::TooltipWindow tooltipWindow { this, 400 };
 
     juce::Label logoLabel;
+
+    juce::Label tunerLabel;
 
     juce::Label scaleCaption, rootCaption;
     juce::ComboBox scaleBox, rootBox;

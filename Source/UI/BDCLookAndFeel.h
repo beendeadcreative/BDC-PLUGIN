@@ -2,10 +2,10 @@
 
 #include <JuceHeader.h>
 
-// Flat, neutral, editorial look (bone/charcoal, heavy tracked all-caps type)
-// in the spirit of Yeezy/Skims campaign pages: no gradients, no bevels, no
-// skeuomorphism. Vertical "bar" sliders render as solid blocks; rotary
-// knobs render as a flat stroked arc.
+// Flat, poster-style look - bright pink background, deep plum bars, pale
+// pink-lavender type - matching the BDC reference mockup's colorway. No
+// gradients, no bevels, no skeuomorphism. Vertical "bar" sliders render as
+// solid blocks; rotary knobs render as a flat stroked arc.
 class BDCLookAndFeel : public juce::LookAndFeel_V4
 {
 public:
@@ -31,4 +31,5 @@ public:
     static const juce::Colour background;
     static const juce::Colour ink;
     static const juce::Colour track;
+    static const juce::Colour text;
 };

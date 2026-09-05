@@ -1,8 +1,9 @@
 #include "BDCLookAndFeel.h"
 
-const juce::Colour BDCLookAndFeel::background { 0xffe7e2d8 }; // bone
-const juce::Colour BDCLookAndFeel::ink        { 0xff201e1b }; // near-black charcoal
-const juce::Colour BDCLookAndFeel::track      { 0xffbdb4a2 }; // sand
+const juce::Colour BDCLookAndFeel::background { 0xffec84d6 }; // bright orchid pink
+const juce::Colour BDCLookAndFeel::ink        { 0xff8a3568 }; // deep plum
+const juce::Colour BDCLookAndFeel::track      { 0xffd699c6 }; // soft mid pink
+const juce::Colour BDCLookAndFeel::text       { 0xfff8e6f4 }; // pale pink-lavender
 
 juce::Font BDCLookAndFeel::trackedFont (float height, bool bold)
 {
@@ -21,26 +22,26 @@ BDCLookAndFeel::BDCLookAndFeel()
     setColour (juce::Slider::thumbColourId, ink);
     setColour (juce::Slider::rotarySliderFillColourId, ink);
     setColour (juce::Slider::rotarySliderOutlineColourId, track);
-    setColour (juce::Slider::textBoxTextColourId, ink);
+    setColour (juce::Slider::textBoxTextColourId, text);
     setColour (juce::Slider::textBoxBackgroundColourId, background);
     setColour (juce::Slider::textBoxOutlineColourId, track);
 
-    setColour (juce::Label::textColourId, ink);
+    setColour (juce::Label::textColourId, text);
     setColour (juce::Label::backgroundColourId, juce::Colours::transparentBlack);
 
-    setColour (juce::ComboBox::backgroundColourId, background);
-    setColour (juce::ComboBox::textColourId, ink);
+    setColour (juce::ComboBox::backgroundColourId, ink);
+    setColour (juce::ComboBox::textColourId, text);
     setColour (juce::ComboBox::outlineColourId, ink);
-    setColour (juce::ComboBox::arrowColourId, ink);
-    setColour (juce::PopupMenu::backgroundColourId, background);
-    setColour (juce::PopupMenu::textColourId, ink);
-    setColour (juce::PopupMenu::highlightedBackgroundColourId, ink);
-    setColour (juce::PopupMenu::highlightedTextColourId, background);
+    setColour (juce::ComboBox::arrowColourId, text);
+    setColour (juce::PopupMenu::backgroundColourId, ink);
+    setColour (juce::PopupMenu::textColourId, text);
+    setColour (juce::PopupMenu::highlightedBackgroundColourId, text);
+    setColour (juce::PopupMenu::highlightedTextColourId, ink);
 
     setColour (juce::TextButton::buttonColourId, track);
     setColour (juce::TextButton::buttonOnColourId, ink);
     setColour (juce::TextButton::textColourOffId, ink);
-    setColour (juce::TextButton::textColourOnId, background);
+    setColour (juce::TextButton::textColourOnId, text);
 }
 
 void BDCLookAndFeel::drawLinearSlider (juce::Graphics& g, int x, int y, int width, int height,

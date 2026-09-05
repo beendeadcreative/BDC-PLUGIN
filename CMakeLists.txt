@@ -26,6 +26,8 @@ juce_add_plugin(BDCPlugin
     IS_MIDI_EFFECT FALSE
     EDITOR_WANTS_KEYBOARD_FOCUS FALSE
     COPY_PLUGIN_AFTER_BUILD TRUE
+    MICROPHONE_PERMISSION_ENABLED TRUE
+    MICROPHONE_PERMISSION_TEXT "BDC Plugin needs audio input access to capture what you play."
 )
 
 juce_generate_juce_header(BDCPlugin)

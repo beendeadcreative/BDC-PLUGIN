@@ -552,18 +552,21 @@ void BDCPluginAudioProcessorEditor::resized()
     auto tapeSlot = footer.removeFromRight (S (72));
     tapeKnob.valueLabel.setBounds (tapeSlot.removeFromBottom (S (13)));
     tapeKnob.caption.setBounds (tapeSlot.removeFromBottom (S (16)));
+    tapeSlot.removeFromTop (S (8)); // a little breathing room above the dial, so it doesn't sit flush at the top
     tapeKnob.dial.setBounds (tapeSlot);
     footer.removeFromRight (S (16));
 
     auto mixSlot = footer.removeFromRight (S (72));
     masterMixKnob.valueLabel.setBounds (mixSlot.removeFromBottom (S (13)));
     masterMixKnob.caption.setBounds (mixSlot.removeFromBottom (S (16)));
+    mixSlot.removeFromTop (S (8));
     masterMixKnob.dial.setBounds (mixSlot);
     footer.removeFromRight (S (16));
 
     auto characterSlot = footer.removeFromRight (S (72));
     characterKnob.valueLabel.setBounds (characterSlot.removeFromBottom (S (13)));
     characterKnob.caption.setBounds (characterSlot.removeFromBottom (S (16)));
+    characterSlot.removeFromTop (S (8));
     characterKnob.dial.setBounds (characterSlot);
     footer.removeFromRight (S (16) / 2);
     footerDividerX[0] = footer.getRight(); // tone macros | Output

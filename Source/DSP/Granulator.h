@@ -7,9 +7,10 @@
 // The core "new melody" engine. Continuously schedules short overlapping
 // grains (windowed snippets read back from the CircularBuffer), each
 // pitch-shifted and time-positioned by the GenerativeEngine, and sums them
-// into an output buffer. This is what turns raw captured audio (real
-// playing, or the SeedGenerator's pad when idle) into evolving melodic
-// phrases rather than a straight-through granular blur.
+// into an output buffer. This is what turns captured audio into evolving
+// melodic phrases rather than a straight-through granular blur. The summed
+// output is gently lowpassed and soft-clipped to keep dense/pitched grain
+// overlap sounding smooth instead of harsh.
 class Granulator
 {
 public:
@@ -51,4 +52,10 @@ private:
 
     double samplesUntilNextGrain = 0.0;
     juce::Random panRandom { 2 };
+
+    // Gentle one-pole lowpass (tames pitch-shift aliasing/grit) + soft clip
+    // (rounds off peaks from dense grain overlap instead of hard-clipping).
+    static constexpr float smoothingCutoffHz = 9000.0f;
+    float lowpassAlpha = 1.0f;
+    std::array<float, 2> lowpassState { { 0.0f, 0.0f } };
 };

@@ -46,7 +46,9 @@ int GenerativeEngine::stepRandomWalk (int current, int minVal, int maxVal, float
     if (rng.nextFloat() < leapProbability)
     {
         // A leap: jump further, in either direction, for melodic variety.
-        step = rng.nextInt ({ 2, 6 });
+        // Kept modest (max ~a fourth in most scales) so it reads as an
+        // interesting interval rather than a jarring register jump.
+        step = rng.nextInt ({ 2, 4 }); // 2 or 3 scale steps
         if (rng.nextBool())
             step = -step;
     }

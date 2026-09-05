@@ -4,6 +4,9 @@ void Granulator::prepare (double newSampleRate, int newNumChannels, int /*maxBlo
 {
     sampleRate = newSampleRate;
     numChannels = newNumChannels;
+
+    lowpassAlpha = 1.0f - std::exp (-2.0f * juce::MathConstants<float>::pi * smoothingCutoffHz / (float) sampleRate);
+
     reset();
 }
 
@@ -13,6 +16,7 @@ void Granulator::reset()
         g.active = false;
 
     samplesUntilNextGrain = 0.0;
+    lowpassState.fill (0.0f);
 }
 
 void Granulator::setParameters (float newGrainsPerSecond, float newGrainSizeMs, float newSpreadSeconds)
@@ -70,9 +74,11 @@ void Granulator::process (const CircularBuffer& source, GenerativeEngine& genera
 
     // Rough loudness compensation so density/size changes don't wildly
     // change overall output level: more overlapping grains means each one
-    // should contribute less.
+    // should contribute less. Deliberately conservative (extra headroom)
+    // so dense overlap doesn't push the soft clip below into audibly
+    // squashing things.
     float avgOverlap = juce::jmax (1.0f, grainsPerSecond * (grainSizeMs * 0.001f));
-    float outputGain = 0.9f / std::sqrt (avgOverlap);
+    float outputGain = 0.6f / std::sqrt (avgOverlap + 0.5f);
 
     for (int i = 0; i < numSamples; ++i)
     {
@@ -97,7 +103,7 @@ void Granulator::process (const CircularBuffer& source, GenerativeEngine& genera
                 float channelPan = (numChannels <= 1) ? 1.0f
                                   : (ch == 0 ? (1.0f - g.pan) : g.pan);
 
-                output.addSample (ch, i, sample * windowGain * channelPan * 1.41421356f);
+                output.addSample (ch, i, sample * windowGain * channelPan);
             }
 
             g.readPos += g.pitchRatio;
@@ -105,6 +111,17 @@ void Granulator::process (const CircularBuffer& source, GenerativeEngine& genera
 
             if (g.age >= g.lengthSamples)
                 g.active = false;
+        }
+
+        // Gentle top-end smoothing (tames the aliasing/grit that comes from
+        // resampled, pitch-shifted grains), then a soft clip so dense
+        // overlaps round off gracefully instead of clipping harshly.
+        for (int ch = 0; ch < numChannels; ++ch)
+        {
+            float raw = output.getSample (ch, i);
+            float& state = lowpassState[(size_t) juce::jmin (ch, 1)];
+            state += lowpassAlpha * (raw - state);
+            output.setSample (ch, i, std::tanh (state));
         }
     }
 }

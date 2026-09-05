@@ -17,8 +17,9 @@ public:
 
     // Reads one interpolated sample, `samplesAgo` behind the current write
     // head (0 = most recently written sample). Fractional values are
-    // linearly interpolated, which is what makes pitch-shifted grain
-    // playback possible.
+    // smoothed with cubic (Catmull-Rom) interpolation rather than linear,
+    // which is what makes pitch-shifted grain playback possible without
+    // the extra aliasing/grit linear interpolation would add.
     float readInterpolated (int channel, float samplesAgo) const;
 
     // Ever-increasing count of samples written so far (never wraps). Grains
@@ -31,6 +32,8 @@ public:
     int getBufferLength() const noexcept { return bufferLength; }
 
 private:
+    int wrapIndex (int index) const noexcept;
+
     juce::AudioBuffer<float> buffer;
     int writePos = 0;
     int bufferLength = 0;

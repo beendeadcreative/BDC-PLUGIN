@@ -36,11 +36,12 @@ private:
         std::unique_ptr<SliderAttachment> attachment;
     };
 
-    void setupHeroBar (HeroBar&, const juce::String& labelText, const juce::String& paramID);
-    void setupKnob (Knob&, const juce::String& labelText, const juce::String& paramID);
+    void setupHeroBar (HeroBar&, const juce::String& labelText, const juce::String& paramID, const juce::String& tooltip);
+    void setupKnob (Knob&, const juce::String& labelText, const juce::String& paramID, const juce::String& tooltip);
 
     BDCPluginAudioProcessor& processorRef;
     BDCLookAndFeel lookAndFeel;
+    juce::TooltipWindow tooltipWindow { this, 400 };
 
     juce::Label logoLabel;
 

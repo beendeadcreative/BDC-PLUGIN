@@ -67,13 +67,13 @@ juce::AudioProcessorValueTreeState::ParameterLayout BDCPluginAudioProcessor::cre
         StringArray { "Major", "Natural Minor", "Dorian", "Major Pentatonic", "Minor Pentatonic" }, 4));
 
     layout.add (std::make_unique<AudioParameterFloat> (
-        ParameterID { ParamIDs::unpredictability, 1 }, "Unpredictability", 0.0f, 1.0f, 0.3f));
+        ParameterID { ParamIDs::unpredictability, 1 }, "Unpredictability", 0.0f, 1.0f, 0.18f));
 
     layout.add (std::make_unique<AudioParameterFloat> (
-        ParameterID { ParamIDs::grainDensity, 1 }, "Grain Density", 0.5f, 30.0f, 6.0f));
+        ParameterID { ParamIDs::grainDensity, 1 }, "Grain Density", 0.5f, 30.0f, 4.5f));
 
     layout.add (std::make_unique<AudioParameterFloat> (
-        ParameterID { ParamIDs::grainSizeMs, 1 }, "Grain Size (ms)", 20.0f, 500.0f, 120.0f));
+        ParameterID { ParamIDs::grainSizeMs, 1 }, "Grain Size (ms)", 20.0f, 500.0f, 170.0f));
 
     layout.add (std::make_unique<AudioParameterFloat> (
         ParameterID { ParamIDs::grainSpreadSec, 1 }, "Grain Spread (s)", 0.1f, 4.0f, 2.0f));

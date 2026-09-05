@@ -81,7 +81,9 @@ void TapeModule::process (juce::AudioBuffer<float>& buffer)
     const float wobbleDepthMs = amount * 1.6f;          // tape speed instability
     const float driveAmount = 1.0f + amount * 5.0f;      // saturation drive
     const float saturationNorm = std::tanh (driveAmount);
-    const float hissLevel = amount * amount * 0.014f;    // audible mainly at higher amounts
+    const float hissLevel = amount * amount * 0.006f;    // quiet bed, mainly at higher amounts - its
+                                                          // tone (see noiseLowpassCutoff in setAmount)
+                                                          // still darkens with amount independently
     const float baseDelaySamples = 5.0f;                 // headroom so wobble can swing both ways
 
     for (int i = 0; i < numSamples; ++i)

@@ -700,8 +700,9 @@ void BDCPluginAudioProcessorEditor::resized()
         {
             const int w = d4.getWidth() / 2;
             auto fastHalf = d4.removeFromLeft (w);
+            d4.removeFromLeft (S (10)); // gap so FAST and the GLUE dial don't crowd each other
             rotaryFastLabel.setBounds (fastHalf.removeFromBottom (S (16)));
-            rotaryFastButton.setBounds (fastHalf.withSizeKeepingCentre (juce::jmin (fastHalf.getWidth(), S (100)), S (32)));
+            rotaryFastButton.setBounds (fastHalf.withSizeKeepingCentre (juce::jmin (fastHalf.getWidth() - S (10), S (76)), S (32)));
             layoutKnob (glueKnob, d4);
         }
 

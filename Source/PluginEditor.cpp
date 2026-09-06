@@ -682,8 +682,9 @@ void BDCPluginAudioProcessorEditor::resized()
                 layoutKnob (*knobs[i], d1.removeFromLeft (w));
 
             auto triggerSlot = d1;
+            triggerSlot.removeFromLeft (S (6)); // gap so the button doesn't crowd the CHAOS knob beside it
             grainTriggerLabel.setBounds (triggerSlot.removeFromBottom (S (16)));
-            grainTriggerButton.setBounds (triggerSlot.withSizeKeepingCentre (juce::jmin (triggerSlot.getWidth(), S (56)), S (32)));
+            grainTriggerButton.setBounds (triggerSlot.withSizeKeepingCentre (juce::jmin (triggerSlot.getWidth(), S (44)), S (32)));
         }
         {
             const int n = 4;

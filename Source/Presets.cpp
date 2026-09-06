@@ -35,6 +35,7 @@ void applyFactoryPreset (juce::AudioProcessorValueTreeState& apvts, const Factor
     setParamRaw (apvts, "delayMix", v.delayMix);
     setParamRaw (apvts, "delayTaps", (float) v.delayTaps);
     setParamRaw (apvts, "delayTapSpread", v.delayTapSpread);
+    setParamRaw (apvts, "outputGlue", v.outputGlue);
     setParamRaw (apvts, "tapeAmount", v.tapeAmount);
     setParamRaw (apvts, "outputGainDb", v.outputGainDb);
     setParamRaw (apvts, "manualBpm", v.manualBpm);

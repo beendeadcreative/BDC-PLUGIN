@@ -42,6 +42,7 @@ struct FactoryPresetValues
     // 0% - i.e. plain single-tap delay, reproducing the old sound exactly.
     int delayTaps = 1;        // 1-4 echoes per feedback cycle
     float delayTapSpread = 0.0f; // 0-1, spacing/stereo spread between taps
+    float outputGlue = 20.0f; // 0-100; matches the plugin's default so presets predating this field all pick it up
 };
 
 struct FactoryPreset

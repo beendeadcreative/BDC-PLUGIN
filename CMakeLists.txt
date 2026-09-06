@@ -53,6 +53,7 @@ target_sources(BDCPlugin
         Source/DSP/RotaryModule.cpp
         Source/DSP/DelayModule.cpp
         Source/DSP/TapeModule.cpp
+        Source/DSP/AnalogGlueModule.cpp
 )
 
 target_compile_definitions(BDCPlugin

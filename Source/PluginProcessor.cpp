@@ -32,6 +32,7 @@ namespace ParamIDs
     static const juce::String grainRateMultiplier   { "grainRateMultiplier" };
     static const juce::String manualBpm             { "manualBpm" };
     static const juce::String masterMix             { "masterMix" };
+    static const juce::String outputGlue            { "outputGlue" };
     static const juce::String keyFollow             { "keyFollow" };
 }
 
@@ -109,6 +110,7 @@ BDCPluginAudioProcessor::BDCPluginAudioProcessor()
     outputGainDbParam     = apvts.getRawParameterValue (ParamIDs::outputGainDb);
     manualBpmParam        = apvts.getRawParameterValue (ParamIDs::manualBpm);
     masterMixParam        = apvts.getRawParameterValue (ParamIDs::masterMix);
+    outputGlueParam       = apvts.getRawParameterValue (ParamIDs::outputGlue);
 }
 
 BDCPluginAudioProcessor::~BDCPluginAudioProcessor() = default;
@@ -289,6 +291,12 @@ juce::AudioProcessorValueTreeState::ParameterLayout BDCPluginAudioProcessor::cre
     layout.add (std::make_unique<AudioParameterBool> (
         ParameterID { ParamIDs::keyFollow, 1 }, "Key Follow", true));
 
+    layout.add (std::make_unique<AudioParameterFloat> (
+        ParameterID { ParamIDs::outputGlue, 1 }, "Glue",
+        NormalisableRange<float> (0.0f, 100.0f), 20.0f,
+        AudioParameterFloatAttributes().withStringFromValueFunction (
+            [] (float v, int) { return String ((int) std::round (v)) + "%"; })));
+
     return layout;
 }
 
@@ -354,6 +362,7 @@ void BDCPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     rotaryModule.prepare (spec);
     delayModule.prepare (spec);
     tapeModule.prepare (spec);
+    glueModule.prepare (spec);
 
     generatedScratch.setSize (numChannels, samplesPerBlock);
     masterDryScratch.setSize (numChannels, samplesPerBlock);
@@ -484,7 +493,15 @@ void BDCPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
             wet[i] = dry[i] * (1.0f - masterMix) + wet[i] * masterMix;
     }
 
-    // --- 7. Output trim ------------------------------------------------
+    // --- 7. Glue: a subtle output-stage saturation applied after
+    // everything, regardless of which effects are engaged - like a mixing
+    // console or tape machine's output stage rounding off whatever passes
+    // through it, giving the whole plugin a bit of cohesive character even
+    // on patches that don't reach for Tape.
+    glueModule.setAmount (outputGlueParam->load() * 0.01f);
+    glueModule.process (buffer);
+
+    // --- 8. Output trim ------------------------------------------------
     buffer.applyGain (juce::Decibels::decibelsToGain (outputGainDbParam->load()));
 
     updateLevelMeter (outputLevel, buffer, numSamples, getSampleRate());

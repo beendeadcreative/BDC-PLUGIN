@@ -170,6 +170,11 @@ BDCPluginAudioProcessorEditor::BDCPluginAudioProcessorEditor (BDCPluginAudioProc
     addAndMakeVisible (rotaryFastButton);
     rotaryFastAttachment = std::make_unique<ButtonAttachment> (processorRef.apvts, "rotaryFast", rotaryFastButton);
 
+    setupKnob (glueKnob, "GLUE", "outputGlue",
+        "A subtle saturation stage after everything else, like a mixing console's output stage rounding off "
+        "whatever passes through it - gives the whole mix a bit of cohesive character even on patches that "
+        "don't use Tape. Stays gentle even at 100%.");
+
     outputGainCaption.setText ("OUTPUT", juce::dontSendNotification);
     outputGainCaption.setFont (juce::Font (12.0f));
     addAndMakeVisible (outputGainCaption);
@@ -412,7 +417,7 @@ void BDCPluginAudioProcessorEditor::setAdvancedVisible (bool show)
 
     for (auto* k : { &grainDensityKnob, &grainSizeKnob, &grainSpreadKnob, &unpredictabilityKnob,
                       &delayTimeKnob, &delayFeedbackKnob, &delayTapsKnob, &delayTapSpreadKnob,
-                      &chorusRateKnob, &chorusDepthKnob, &manualBpmKnob })
+                      &chorusRateKnob, &chorusDepthKnob, &manualBpmKnob, &glueKnob })
         k->setVisible (show);
 
     rotaryFastLabel.setVisible (show);
@@ -496,7 +501,7 @@ void BDCPluginAudioProcessorEditor::resized()
     for (auto* k : { &grainDensityKnob, &grainSizeKnob, &grainSpreadKnob, &unpredictabilityKnob, &characterKnob,
                       &delayTimeKnob, &delayFeedbackKnob, &delayTapsKnob, &delayTapSpreadKnob,
                       &chorusRateKnob, &chorusDepthKnob,
-                      &manualBpmKnob, &tapeKnob, &masterMixKnob })
+                      &manualBpmKnob, &tapeKnob, &masterMixKnob, &glueKnob })
     {
         k->caption.setFont (SF (kKnobCaptionFontSize));
         k->valueLabel.setFont (SF (kKnobValueFontSize));
@@ -672,8 +677,11 @@ void BDCPluginAudioProcessorEditor::resized()
             layoutKnob (chorusDepthKnob, d3);
         }
         {
-            rotaryFastLabel.setBounds (d4.removeFromBottom (S (16)));
-            rotaryFastButton.setBounds (d4.withSizeKeepingCentre (juce::jmin (d4.getWidth(), S (100)), S (32)));
+            const int w = d4.getWidth() / 2;
+            auto fastHalf = d4.removeFromLeft (w);
+            rotaryFastLabel.setBounds (fastHalf.removeFromBottom (S (16)));
+            rotaryFastButton.setBounds (fastHalf.withSizeKeepingCentre (juce::jmin (fastHalf.getWidth(), S (100)), S (32)));
+            layoutKnob (glueKnob, d4);
         }
 
         // Sync strip: SYNC + note division + x/÷ multiplier for Grain and

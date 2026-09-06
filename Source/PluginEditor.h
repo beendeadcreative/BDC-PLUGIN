@@ -136,6 +136,7 @@ private:
 
     Knob tapeKnob;
     Knob masterMixKnob;
+    Knob glueKnob;
 
     juce::TextButton sustainButton { "SUSTAIN" };
     std::unique_ptr<ButtonAttachment> sustainAttachment;

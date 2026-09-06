@@ -107,6 +107,7 @@ private:
     juce::AudioParameterChoice* grainNoteDivisionParam = nullptr;
     juce::AudioParameterChoice* grainRateMultiplierParam = nullptr;
     juce::AudioParameterBool*   grainTriggerParam = nullptr;
+    juce::AudioParameterBool*   delayReverseParam = nullptr;
 
     std::atomic<float>* unpredictabilityParam = nullptr;
     std::atomic<float>* grainDensityParam = nullptr;

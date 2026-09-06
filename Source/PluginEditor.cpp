@@ -156,10 +156,23 @@ BDCPluginAudioProcessorEditor::BDCPluginAudioProcessorEditor (BDCPluginAudioProc
         "How much of each echo feeds back into the next one. Higher = repeats for longer.");
     setupKnob (delayTapsKnob, "TAPS", "delayTaps",
         "Number of echoes per repeat, read off the same delay line like the multiple heads on a real tape echo. "
-        "1 is a plain single-tap delay; higher counts add quieter pre-echoes ahead of the main repeat.");
+        "1 is a plain single-tap delay; higher counts add quieter pre-echoes ahead of the main repeat. "
+        "Ignored while REVERSE is on.");
     setupKnob (delayTapSpreadKnob, "SPREAD", "delayTapSpread",
         "Spaces and pans the extra echo taps (when Taps is above 1) alternately left/right for a wider, more "
-        "rhythmic texture. Has no effect with only 1 tap.");
+        "rhythmic texture. Has no effect with only 1 tap, or while REVERSE is on.");
+
+    delayReverseLabel.setText ("REVERSE", juce::dontSendNotification);
+    delayReverseLabel.setJustificationType (juce::Justification::centred);
+    delayReverseLabel.setFont (juce::Font (10.0f));
+    addAndMakeVisible (delayReverseLabel);
+
+    delayReverseButton.setClickingTogglesState (true);
+    delayReverseButton.setTooltip (
+        "Each repeat plays its chunk of history backwards instead of forwards - a classic \"reverse echo\" "
+        "swell, timed to the Time knob. Overrides Taps while on (they work together again once it's off).");
+    addAndMakeVisible (delayReverseButton);
+    delayReverseAttachment = std::make_unique<ButtonAttachment> (processorRef.apvts, "delayReverse", delayReverseButton);
 
     setupKnob (chorusRateKnob, "RATE", "chorusRate",
         "Speed of the chorus effect's modulation.");
@@ -444,6 +457,8 @@ void BDCPluginAudioProcessorEditor::setAdvancedVisible (bool show)
     rotaryFastButton.setVisible (show);
     grainTriggerLabel.setVisible (show);
     grainTriggerButton.setVisible (show);
+    delayReverseLabel.setVisible (show);
+    delayReverseButton.setVisible (show);
     grainSync.setVisible (show);
     delaySync.setVisible (show);
 
@@ -514,6 +529,7 @@ void BDCPluginAudioProcessorEditor::resized()
     outputGainValueLabel.setFont (SF (kKnobValueFontSize));
     rotaryFastLabel.setFont (SF (kRotaryLabelFontSize));
     grainTriggerLabel.setFont (SF (kRotaryLabelFontSize));
+    delayReverseLabel.setFont (SF (kRotaryLabelFontSize));
 
     for (auto* hb : { &grainBar, &delayBar, &chorusBar, &rotaryBar })
     {
@@ -693,11 +709,16 @@ void BDCPluginAudioProcessorEditor::resized()
             grainTriggerButton.setBounds (triggerSlot.withSizeKeepingCentre (juce::jmin (triggerSlot.getWidth(), S (44)), S (32)));
         }
         {
-            const int n = 4;
+            const int n = 5;
             const int w = d2.getWidth() / n;
             Knob* knobs[] { &delayTimeKnob, &delayFeedbackKnob, &delayTapsKnob, &delayTapSpreadKnob };
-            for (int i = 0; i < n; ++i)
+            for (int i = 0; i < 4; ++i)
                 layoutKnob (*knobs[i], d2.removeFromLeft (w));
+
+            auto reverseSlot = d2;
+            reverseSlot.removeFromLeft (S (6)); // gap so the button doesn't crowd the SPREAD knob beside it
+            delayReverseLabel.setBounds (reverseSlot.removeFromBottom (S (16)));
+            delayReverseButton.setBounds (reverseSlot.withSizeKeepingCentre (juce::jmin (reverseSlot.getWidth(), S (44)), S (32)));
         }
         {
             const int w = d3.getWidth() / 2;

@@ -5,7 +5,11 @@ void DelayModule::prepare (const juce::dsp::ProcessSpec& spec)
     currentSampleRate = spec.sampleRate;
 
     delayLine.prepare (spec);
-    delayLine.setMaximumDelayInSamples ((int) (spec.sampleRate * 2.0)); // up to 2s
+    // Up to 2s of delay time, but Reverse needs to read back roughly 2x
+    // the delay time (see process()) to sweep through a full chunk, so
+    // the line itself needs to hold onto more than twice that, plus a
+    // little headroom for the wow/flutter wobble.
+    delayLine.setMaximumDelayInSamples ((int) (spec.sampleRate * 4.5));
 
     for (auto& f : feedbackLowpass)
     {
@@ -32,15 +36,19 @@ void DelayModule::reset()
 
     wowPhase = 0.0f;
     flutterPhase = 0.0f;
+
+    reverseWindowSamples = 1;
+    reverseCyclePos = 0;
 }
 
-void DelayModule::setParameters (float delayMs, float feedback01, float mix01, int taps, float tapSpread01)
+void DelayModule::setParameters (float delayMs, float feedback01, float mix01, int taps, float tapSpread01, bool reverse)
 {
     delayInSamples = (float) (delayMs * 0.001 * currentSampleRate);
     feedback = juce::jlimit (0.0f, 0.95f, feedback01);
     mix = juce::jlimit (0.0f, 1.0f, mix01);
     numTaps = juce::jlimit (1, maxTaps, taps);
     tapSpread = juce::jlimit (0.0f, 1.0f, tapSpread01);
+    reverseMode = reverse;
 }
 
 void DelayModule::process (juce::AudioBuffer<float>& buffer)
@@ -61,22 +69,55 @@ void DelayModule::process (juce::AudioBuffer<float>& buffer)
         float wobbleMs = wowDepthMs * std::sin (wowPhase) + flutterDepthMs * std::sin (flutterPhase);
         float modulatedDelaySamples = juce::jmax (1.0f, delayInSamples + wobbleMs * 0.001f * (float) currentSampleRate);
 
-        // Lay out the taps: evenly spaced fractions of the delay time,
-        // e.g. numTaps == 3 reads at 1/3, 2/3, and 1x. Only the last
-        // (full-time) tap is centred and feeds the feedback/tone path;
-        // earlier taps are quieter pre-echoes, panned alternately by
-        // tapSpread for width instead of stacking up in the centre.
-        for (int k = 0; k < numTaps; ++k)
+        int effectiveNumTaps;
+
+        if (reverseMode)
         {
-            const bool isMainTap = (k == numTaps - 1);
-            const float ratio = (float) (k + 1) / (float) numTaps;
+            // Sweep the read lag from 1 sample up to ~2x the current delay
+            // time over a cycle exactly one delay-time long: since the
+            // write position also advances a sample per sample, a lag
+            // growing at 2 samples per sample means the read position
+            // itself moves backward through history at normal speed -
+            // i.e. this plays back that chunk in reverse. Once the cycle
+            // completes, jump back to lag 1 and start reading the next
+            // (more recent) chunk, locking in a fresh window length from
+            // the current delay time/wobble so tempo or Time-knob changes
+            // land cleanly at chunk boundaries rather than mid-sweep.
+            if (reverseCyclePos >= reverseWindowSamples)
+            {
+                reverseCyclePos = 0;
+                reverseWindowSamples = juce::jmax (1, (int) modulatedDelaySamples);
+            }
 
-            tapDelaySamples[(size_t) k] = juce::jmax (1.0f, modulatedDelaySamples * ratio);
-            tapLevel[(size_t) k] = isMainTap ? 1.0f : 0.7f * ratio;
+            tapDelaySamples[0] = (float) (2 * reverseCyclePos + 1);
+            tapLevel[0] = 1.0f;
+            tapLeftGain[0] = 1.0f;
+            tapRightGain[0] = 1.0f;
+            ++reverseCyclePos;
 
-            const float pan = isMainTap ? 0.0f : ((k % 2 == 0) ? -tapSpread : tapSpread);
-            tapLeftGain[(size_t) k] = juce::jlimit (0.0f, 1.0f, 1.0f - pan);
-            tapRightGain[(size_t) k] = juce::jlimit (0.0f, 1.0f, 1.0f + pan);
+            effectiveNumTaps = 1;
+        }
+        else
+        {
+            // Lay out the taps: evenly spaced fractions of the delay time,
+            // e.g. numTaps == 3 reads at 1/3, 2/3, and 1x. Only the last
+            // (full-time) tap is centred and feeds the feedback/tone path;
+            // earlier taps are quieter pre-echoes, panned alternately by
+            // tapSpread for width instead of stacking up in the centre.
+            for (int k = 0; k < numTaps; ++k)
+            {
+                const bool isMainTap = (k == numTaps - 1);
+                const float ratio = (float) (k + 1) / (float) numTaps;
+
+                tapDelaySamples[(size_t) k] = juce::jmax (1.0f, modulatedDelaySamples * ratio);
+                tapLevel[(size_t) k] = isMainTap ? 1.0f : 0.7f * ratio;
+
+                const float pan = isMainTap ? 0.0f : ((k % 2 == 0) ? -tapSpread : tapSpread);
+                tapLeftGain[(size_t) k] = juce::jlimit (0.0f, 1.0f, 1.0f - pan);
+                tapRightGain[(size_t) k] = juce::jlimit (0.0f, 1.0f, 1.0f + pan);
+            }
+
+            effectiveNumTaps = numTaps;
         }
 
         for (int ch = 0; ch < numChannels; ++ch)
@@ -88,9 +129,9 @@ void DelayModule::process (juce::AudioBuffer<float>& buffer)
             float wetSum = 0.0f;
             float mainDelayed = 0.0f;
 
-            for (int k = 0; k < numTaps; ++k)
+            for (int k = 0; k < effectiveNumTaps; ++k)
             {
-                const bool isMainTap = (k == numTaps - 1);
+                const bool isMainTap = (k == effectiveNumTaps - 1);
                 float tapSample = delayLine.popSample (ch, tapDelaySamples[(size_t) k], isMainTap);
                 float gain = (ch == 0) ? tapLeftGain[(size_t) k] : tapRightGain[(size_t) k];
                 wetSum += tapSample * tapLevel[(size_t) k] * gain;

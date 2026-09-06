@@ -15,13 +15,21 @@
 // path, so numTaps == 1 reproduces the original single-tap behaviour
 // exactly. Tap Spread pans the earlier taps alternately left/right for a
 // wider, more rhythmic texture; the main tap always stays centred.
+//
+// Reverse: instead of reading at a fixed (wobbling) lag, sweeps the read
+// point's lag from 1 sample up to roughly 2x the delay time over a cycle
+// exactly one delay-time long - which plays back that same chunk of
+// history backwards, at normal speed, before jumping back to the start
+// of the next chunk. Overrides Taps entirely (mutually exclusive) to
+// keep the read logic simple; still feeds the same feedback/tone/
+// saturation path as the normal single-tap case.
 class DelayModule
 {
 public:
     void prepare (const juce::dsp::ProcessSpec& spec);
     void reset();
 
-    void setParameters (float delayMs, float feedback01, float mix01, int numTaps, float tapSpread01);
+    void setParameters (float delayMs, float feedback01, float mix01, int numTaps, float tapSpread01, bool reverse);
     void process (juce::AudioBuffer<float>& buffer);
 
 private:
@@ -29,6 +37,9 @@ private:
 
     int numTaps = 1;
     float tapSpread = 0.0f;
+    bool reverseMode = false;
+    int reverseWindowSamples = 1; // length of the chunk currently being played backwards
+    int reverseCyclePos = 0;      // how far into that chunk's backwards playback we are
 
     juce::dsp::DelayLine<float, juce::dsp::DelayLineInterpolationTypes::Linear> delayLine { 192000 };
     std::array<juce::dsp::IIR::Filter<float>, 2> feedbackLowpass;

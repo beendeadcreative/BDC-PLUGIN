@@ -31,6 +31,7 @@ namespace ParamIDs
     static const juce::String grainNoteDivision     { "grainNoteDivision" };
     static const juce::String grainRateMultiplier   { "grainRateMultiplier" };
     static const juce::String grainTrigger          { "grainTrigger" };
+    static const juce::String delayReverse          { "delayReverse" };
     static const juce::String manualBpm             { "manualBpm" };
     static const juce::String masterMix             { "masterMix" };
     static const juce::String outputGlue            { "outputGlue" };
@@ -93,6 +94,7 @@ BDCPluginAudioProcessor::BDCPluginAudioProcessor()
     grainNoteDivisionParam   = dynamic_cast<juce::AudioParameterChoice*> (apvts.getParameter (ParamIDs::grainNoteDivision));
     grainRateMultiplierParam = dynamic_cast<juce::AudioParameterChoice*> (apvts.getParameter (ParamIDs::grainRateMultiplier));
     grainTriggerParam        = dynamic_cast<juce::AudioParameterBool*>   (apvts.getParameter (ParamIDs::grainTrigger));
+    delayReverseParam        = dynamic_cast<juce::AudioParameterBool*>   (apvts.getParameter (ParamIDs::delayReverse));
 
     unpredictabilityParam = apvts.getRawParameterValue (ParamIDs::unpredictability);
     grainDensityParam     = apvts.getRawParameterValue (ParamIDs::grainDensity);
@@ -259,6 +261,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout BDCPluginAudioProcessor::cre
         NormalisableRange<float> (0.0f, 1.0f), 0.35f,
         AudioParameterFloatAttributes().withStringFromValueFunction (
             [] (float v, int) { return String ((int) std::round (v * 100.0f)) + "%"; })));
+
+    layout.add (std::make_unique<AudioParameterBool> (
+        ParameterID { ParamIDs::delayReverse, 1 }, "Delay Reverse", false));
 
     layout.add (std::make_unique<AudioParameterBool> (
         ParameterID { ParamIDs::delaySync, 1 }, "Delay Sync", false));
@@ -499,7 +504,8 @@ void BDCPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
     }
 
     delayModule.setParameters (delayTimeMs, delayFeedbackParam->load(), delayMixParam->load(),
-                                (int) std::round (delayTapsParam->load()), delayTapSpreadParam->load());
+                                (int) std::round (delayTapsParam->load()), delayTapSpreadParam->load(),
+                                delayReverseParam->get());
     delayModule.process (buffer);
 
     // --- 5. Tape: as if the whole mix were bounced through a cassette 4-track

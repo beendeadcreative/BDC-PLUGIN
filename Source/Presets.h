@@ -44,6 +44,7 @@ struct FactoryPresetValues
     float delayTapSpread = 0.0f; // 0-1, spacing/stereo spread between taps
     float outputGlue = 20.0f; // 0-100; matches the plugin's default so presets predating this field all pick it up
     bool grainTrigger = false; // when true, a grain spawns per detected input hit instead of on Density's clock
+    bool delayReverse = false; // when true, each delay repeat plays its chunk of history backwards
 };
 
 struct FactoryPreset

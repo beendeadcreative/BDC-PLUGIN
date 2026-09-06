@@ -123,6 +123,9 @@ private:
     std::unique_ptr<ButtonAttachment> grainTriggerAttachment;
     Knob characterKnob;
     Knob delayTimeKnob, delayFeedbackKnob, delayTapsKnob, delayTapSpreadKnob;
+    juce::Label delayReverseLabel;
+    juce::TextButton delayReverseButton { "REV" };
+    std::unique_ptr<ButtonAttachment> delayReverseAttachment;
     Knob chorusRateKnob, chorusDepthKnob;
 
     juce::Label rotaryFastLabel;

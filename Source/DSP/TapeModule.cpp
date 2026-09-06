@@ -79,7 +79,7 @@ void TapeModule::process (juce::AudioBuffer<float>& buffer)
     const int numSamples = buffer.getNumSamples();
 
     const float wobbleDepthMs = amount * 1.6f;          // tape speed instability
-    const float driveAmount = 1.0f + amount * 5.0f;      // saturation drive
+    const float driveAmount = 1.0f + amount * 8.0f;      // saturation drive
     const float saturationNorm = std::tanh (driveAmount);
     const float hissLevel = amount * amount * 0.003f;    // quiet bed, mainly at higher amounts - its
                                                           // tone (see noiseLowpassCutoff in setAmount)
@@ -131,9 +131,11 @@ void TapeModule::process (juce::AudioBuffer<float>& buffer)
             // Asymmetric drive (gentler on the negative half) instead of a
             // symmetric tanh: symmetric clipping only adds odd harmonics,
             // which reads as harsh/transistor-y. The asymmetry adds even
-            // harmonics too, which is what actually sounds warm/tube-like.
+            // harmonics too, which is what actually sounds warm/tube-like -
+            // pushed further here (0.55 instead of 0.75) for a noticeably
+            // richer harmonic signature at the same Tape amount.
             float driven = toned * driveAmount;
-            float saturated = (driven >= 0.0f ? std::tanh (driven) : std::tanh (driven * 0.75f)) / saturationNorm;
+            float saturated = (driven >= 0.0f ? std::tanh (driven) : std::tanh (driven * 0.55f)) / saturationNorm;
 
             // DC blocking + final tone shaping happens after saturation, so
             // it also mops up any DC drift the asymmetry introduces.

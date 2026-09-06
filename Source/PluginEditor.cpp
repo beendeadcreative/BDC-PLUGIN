@@ -127,6 +127,7 @@ BDCPluginAudioProcessorEditor::BDCPluginAudioProcessorEditor (BDCPluginAudioProc
 
     grainTriggerButton.setClickingTogglesState (true);
     grainTriggerButton.setTooltip (
+        "TRIGGER\n\n"
         "Spawns a note the instant an input hit is detected, instead of the free-running Density clock - great "
         "for drums/percussion, where you want an answer-back on every hit rather than notes drifting "
         "independently of what's being played.");
@@ -169,6 +170,7 @@ BDCPluginAudioProcessorEditor::BDCPluginAudioProcessorEditor (BDCPluginAudioProc
 
     delayReverseButton.setClickingTogglesState (true);
     delayReverseButton.setTooltip (
+        "REVERSE\n\n"
         "Each repeat plays its chunk of history backwards instead of forwards - a classic \"reverse echo\" "
         "swell, timed to the Time knob. Overrides Taps while on (they work together again once it's off).");
     addAndMakeVisible (delayReverseButton);
@@ -193,7 +195,9 @@ BDCPluginAudioProcessorEditor::BDCPluginAudioProcessorEditor (BDCPluginAudioProc
     addAndMakeVisible (rotaryFastLabel);
 
     rotaryFastButton.setClickingTogglesState (true);
-    rotaryFastButton.setTooltip ("Toggles the rotary speaker between slow (chorale) and fast (tremolo) speed, ramping between them like a real Leslie motor.");
+    rotaryFastButton.setTooltip (
+        "SPEED\n\n"
+        "Toggles the rotary speaker between slow (chorale) and fast (tremolo) speed, ramping between them like a real Leslie motor.");
     addAndMakeVisible (rotaryFastButton);
     rotaryFastAttachment = std::make_unique<ButtonAttachment> (processorRef.apvts, "rotaryFast", rotaryFastButton);
 

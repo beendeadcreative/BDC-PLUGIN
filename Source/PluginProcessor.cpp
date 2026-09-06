@@ -366,6 +366,10 @@ void BDCPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
 
     generatedScratch.setSize (numChannels, samplesPerBlock);
     masterDryScratch.setSize (numChannels, samplesPerBlock);
+
+    generativeMixSmoother.reset (sampleRate, 1.8);
+    generativeMixSmoother.setCurrentAndTargetValue (0.0f);
+    generativeMixRampScratch.resize ((size_t) samplesPerBlock);
 }
 
 void BDCPluginAudioProcessor::releaseResources() {}
@@ -445,14 +449,25 @@ void BDCPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
     granulator.setParameters (grainsPerSecond, grainSizeMsParam->load(), grainSpreadSecParam->load());
     granulator.process (captureBuffer, generativeEngine, generatedScratch, numSamples);
 
-    const float genMix = hasBeenPrimed ? generativeMixParam->load() : 0.0f;
+    // Eased in/out over ~2 seconds (see generativeMixSmoother) rather than
+    // applied at a fixed level instantly, so the generator reads as a wash
+    // breathing over the sound rather than a layer snapping on and off.
+    generativeMixSmoother.setTargetValue (hasBeenPrimed ? generativeMixParam->load() : 0.0f);
+    if ((int) generativeMixRampScratch.size() < numSamples)
+        generativeMixRampScratch.resize ((size_t) numSamples);
+    for (int i = 0; i < numSamples; ++i)
+        generativeMixRampScratch[(size_t) i] = generativeMixSmoother.getNextValue();
+
     for (int ch = 0; ch < numChannels; ++ch)
     {
         auto* dst = buffer.getWritePointer (ch);
         auto* generated = generatedScratch.getReadPointer (ch);
 
         for (int i = 0; i < numSamples; ++i)
+        {
+            const float genMix = generativeMixRampScratch[(size_t) i];
             dst[i] = dst[i] * (1.0f - genMix) + generated[i] * genMix;
+        }
     }
 
     // --- 4. Chorus -> Rotary -> Delay --------------------------------------

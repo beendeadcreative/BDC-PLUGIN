@@ -151,5 +151,12 @@ private:
     juce::AudioBuffer<float> generatedScratch;
     juce::AudioBuffer<float> masterDryScratch;
 
+    // Eases the generative mix in and out over ~2 seconds instead of
+    // applying it at a fixed level instantly, so the generator reads as a
+    // wash breathing over the sound rather than a constant layer snapping
+    // on/off (also smooths manual moves of the Grain mix knob/hero bar).
+    juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear> generativeMixSmoother;
+    std::vector<float> generativeMixRampScratch;
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (BDCPluginAudioProcessor)
 };

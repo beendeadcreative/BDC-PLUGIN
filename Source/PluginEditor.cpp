@@ -697,6 +697,7 @@ void BDCPluginAudioProcessorEditor::resized()
         {
             k.valueLabel.setBounds (slot.removeFromBottom (S (13)));
             k.caption.setBounds (slot.removeFromBottom (S (16)));
+            slot.removeFromTop (S (8)); // breathing room so the dial's arc doesn't sit flush against the top edge
             k.dial.setBounds (slot);
         };
 
@@ -763,6 +764,7 @@ void BDCPluginAudioProcessorEditor::resized()
 
         manualBpmKnob.valueLabel.setBounds (sy4.removeFromBottom (S (13)));
         manualBpmKnob.caption.setBounds (sy4.removeFromBottom (S (16)));
+        sy4.removeFromTop (S (4)); // breathing room so the dial's arc doesn't sit flush against the top edge
         manualBpmKnob.dial.setBounds (sy4.withSizeKeepingCentre (juce::jmin (sy4.getWidth(), S (44)), sy4.getHeight()));
     }
 }

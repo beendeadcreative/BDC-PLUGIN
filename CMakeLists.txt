@@ -15,7 +15,8 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(JUCE)
 
 juce_add_plugin(BDCPlugin
-    COMPANY_NAME "BDC"
+    COMPANY_NAME "Been Dead Creative"
+    BUNDLE_ID "com.beendeadcreative.bdcplugin"
     PLUGIN_MANUFACTURER_CODE Bdcm
     PLUGIN_CODE Bdc1
     FORMATS AU VST3 Standalone

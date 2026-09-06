@@ -30,6 +30,7 @@ namespace ParamIDs
     static const juce::String grainRateSync         { "grainRateSync" };
     static const juce::String grainNoteDivision     { "grainNoteDivision" };
     static const juce::String grainRateMultiplier   { "grainRateMultiplier" };
+    static const juce::String grainTrigger          { "grainTrigger" };
     static const juce::String manualBpm             { "manualBpm" };
     static const juce::String masterMix             { "masterMix" };
     static const juce::String outputGlue            { "outputGlue" };
@@ -91,6 +92,7 @@ BDCPluginAudioProcessor::BDCPluginAudioProcessor()
     grainRateSyncParam       = dynamic_cast<juce::AudioParameterBool*>   (apvts.getParameter (ParamIDs::grainRateSync));
     grainNoteDivisionParam   = dynamic_cast<juce::AudioParameterChoice*> (apvts.getParameter (ParamIDs::grainNoteDivision));
     grainRateMultiplierParam = dynamic_cast<juce::AudioParameterChoice*> (apvts.getParameter (ParamIDs::grainRateMultiplier));
+    grainTriggerParam        = dynamic_cast<juce::AudioParameterBool*>   (apvts.getParameter (ParamIDs::grainTrigger));
 
     unpredictabilityParam = apvts.getRawParameterValue (ParamIDs::unpredictability);
     grainDensityParam     = apvts.getRawParameterValue (ParamIDs::grainDensity);
@@ -192,6 +194,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout BDCPluginAudioProcessor::cre
 
     layout.add (std::make_unique<AudioParameterChoice> (
         ParameterID { ParamIDs::grainRateMultiplier, 1 }, "Grain Rate Multiplier", TempoSync::multiplierChoices, 2));
+
+    layout.add (std::make_unique<AudioParameterBool> (
+        ParameterID { ParamIDs::grainTrigger, 1 }, "Grain Trigger", false));
 
     layout.add (std::make_unique<AudioParameterFloat> (
         ParameterID { ParamIDs::generativeMix, 1 }, "Generative Mix",
@@ -346,6 +351,7 @@ void BDCPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
 
     captureBuffer.prepare (sampleRate, numChannels, 6.0f); // 6s of history available for spread/reads
     inputActivityDetector.prepare (sampleRate);
+    transientDetector.prepare (sampleRate);
     pitchDetector.prepare (sampleRate);
     keyTracker.prepare (sampleRate);
     keyTracker.seedRootScale (rootNoteParam->getIndex(), scaleTypeParam->getIndex());
@@ -405,6 +411,10 @@ void BDCPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
     if (inputActive)
         hasBeenPrimed = true; // never generate until real audio has been played at least once
 
+    // Always kept warm (regardless of whether Grain Trigger is on) so its
+    // envelopes don't have to "catch up" the moment it's switched on.
+    const bool onsetDetected = transientDetector.updateAndDetectOnset (masterDryScratch, numSamples);
+
     // Live tuner: analyze the pristine dry input, before anything below
     // starts blending in generated/effected material.
     pitchDetector.process (buffer, numSamples);
@@ -447,7 +457,8 @@ void BDCPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
     }
 
     granulator.setParameters (grainsPerSecond, grainSizeMsParam->load(), grainSpreadSecParam->load());
-    granulator.process (captureBuffer, generativeEngine, generatedScratch, numSamples);
+    granulator.process (captureBuffer, generativeEngine, generatedScratch, numSamples,
+                         grainTriggerParam->get(), onsetDetected);
 
     // Eased in/out over ~2 seconds (see generativeMixSmoother) rather than
     // applied at a fixed level instantly, so the generator reads as a wash

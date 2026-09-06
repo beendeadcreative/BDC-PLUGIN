@@ -111,13 +111,27 @@ BDCPluginAudioProcessorEditor::BDCPluginAudioProcessorEditor (BDCPluginAudioProc
         "How much of the rotary (Leslie speaker) effect is mixed in.");
 
     setupKnob (grainDensityKnob, "DENSITY", "grainDensity",
-        "How many new notes the generator plays per second. Higher = busier and more granular, lower = sparser and more spacious.");
+        "How many new notes the generator plays per second. Higher = busier and more granular, lower = sparser and more spacious. "
+        "Ignored while TRIGGER is on - each input hit spawns a note instead.");
     setupKnob (grainSizeKnob, "SIZE", "grainSizeMs",
         "How long each generated note lasts. Shorter = choppier/glitchier, longer = smoother and more sustained.");
     setupKnob (grainSpreadKnob, "SPREAD", "grainSpreadSec",
         "How far back in time the generator is allowed to pull material from. Higher = it draws on a longer memory of what you played.");
     setupKnob (unpredictabilityKnob, "CHAOS", "unpredictability",
         "How often the generated melody takes a big jump instead of moving stepwise. Higher = more unpredictable and adventurous.");
+
+    grainTriggerLabel.setText ("TRIGGER", juce::dontSendNotification);
+    grainTriggerLabel.setJustificationType (juce::Justification::centred);
+    grainTriggerLabel.setFont (juce::Font (10.0f));
+    addAndMakeVisible (grainTriggerLabel);
+
+    grainTriggerButton.setClickingTogglesState (true);
+    grainTriggerButton.setTooltip (
+        "Spawns a note the instant an input hit is detected, instead of the free-running Density clock - great "
+        "for drums/percussion, where you want an answer-back on every hit rather than notes drifting "
+        "independently of what's being played.");
+    addAndMakeVisible (grainTriggerButton);
+    grainTriggerAttachment = std::make_unique<ButtonAttachment> (processorRef.apvts, "grainTrigger", grainTriggerButton);
 
     characterKnob.caption.setText ("CHARACTER", juce::dontSendNotification);
     characterKnob.caption.setJustificationType (juce::Justification::centred);
@@ -422,6 +436,8 @@ void BDCPluginAudioProcessorEditor::setAdvancedVisible (bool show)
 
     rotaryFastLabel.setVisible (show);
     rotaryFastButton.setVisible (show);
+    grainTriggerLabel.setVisible (show);
+    grainTriggerButton.setVisible (show);
     grainSync.setVisible (show);
     delaySync.setVisible (show);
 
@@ -491,6 +507,7 @@ void BDCPluginAudioProcessorEditor::resized()
     outputGainCaption.setFont (SF (kCaptionFontSize));
     outputGainValueLabel.setFont (SF (kKnobValueFontSize));
     rotaryFastLabel.setFont (SF (kRotaryLabelFontSize));
+    grainTriggerLabel.setFont (SF (kRotaryLabelFontSize));
 
     for (auto* hb : { &grainBar, &delayBar, &chorusBar, &rotaryBar })
     {
@@ -658,11 +675,15 @@ void BDCPluginAudioProcessorEditor::resized()
         };
 
         {
-            const int n = 4;
+            const int n = 5;
             const int w = d1.getWidth() / n;
             Knob* knobs[] { &grainDensityKnob, &grainSizeKnob, &grainSpreadKnob, &unpredictabilityKnob };
-            for (int i = 0; i < n; ++i)
+            for (int i = 0; i < 4; ++i)
                 layoutKnob (*knobs[i], d1.removeFromLeft (w));
+
+            auto triggerSlot = d1;
+            grainTriggerLabel.setBounds (triggerSlot.removeFromBottom (S (16)));
+            grainTriggerButton.setBounds (triggerSlot.withSizeKeepingCentre (juce::jmin (triggerSlot.getWidth(), S (56)), S (32)));
         }
         {
             const int n = 4;

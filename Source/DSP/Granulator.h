@@ -23,8 +23,14 @@ public:
     //   read from (the generative engine's position walk is scaled to this).
     void setParameters (float grainsPerSecond, float grainSizeMs, float spreadSeconds);
 
+    // triggerMode: when true, ignores the free-running/synced density
+    // clock entirely and instead spawns exactly one grain per call where
+    // onsetDetectedThisBlock is true (see TransientDetector) - each input
+    // hit gets its own grain instead of grains drifting independently of
+    // what's actually being played.
     void process (const CircularBuffer& source, GenerativeEngine& generative,
-                   juce::AudioBuffer<float>& output, int numSamples);
+                   juce::AudioBuffer<float>& output, int numSamples,
+                   bool triggerMode, bool onsetDetectedThisBlock);
 
 private:
     struct Grain

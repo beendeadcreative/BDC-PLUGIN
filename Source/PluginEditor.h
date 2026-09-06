@@ -118,6 +118,9 @@ private:
     HeroBar grainBar, delayBar, chorusBar, rotaryBar;
 
     Knob grainDensityKnob, grainSizeKnob, grainSpreadKnob, unpredictabilityKnob;
+    juce::Label grainTriggerLabel;
+    juce::TextButton grainTriggerButton { "TRIG" };
+    std::unique_ptr<ButtonAttachment> grainTriggerAttachment;
     Knob characterKnob;
     Knob delayTimeKnob, delayFeedbackKnob, delayTapsKnob, delayTapSpreadKnob;
     Knob chorusRateKnob, chorusDepthKnob;

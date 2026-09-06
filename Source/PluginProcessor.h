@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 #include "DSP/CircularBuffer.h"
 #include "DSP/InputActivityDetector.h"
+#include "DSP/TransientDetector.h"
 #include "DSP/PitchDetector.h"
 #include "DSP/KeyTracker.h"
 #include "DSP/GenerativeEngine.h"
@@ -105,6 +106,7 @@ private:
     juce::AudioParameterBool*   grainRateSyncParam = nullptr;
     juce::AudioParameterChoice* grainNoteDivisionParam = nullptr;
     juce::AudioParameterChoice* grainRateMultiplierParam = nullptr;
+    juce::AudioParameterBool*   grainTriggerParam = nullptr;
 
     std::atomic<float>* unpredictabilityParam = nullptr;
     std::atomic<float>* grainDensityParam = nullptr;
@@ -128,6 +130,7 @@ private:
 
     CircularBuffer captureBuffer;
     InputActivityDetector inputActivityDetector;
+    TransientDetector transientDetector;
     PitchDetector pitchDetector;
     KeyTracker keyTracker;
     GenerativeEngine generativeEngine;

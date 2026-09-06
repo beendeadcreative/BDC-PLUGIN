@@ -45,6 +45,7 @@ target_sources(BDCPlugin
         Source/UI/BDCLookAndFeel.cpp
         Source/DSP/CircularBuffer.cpp
         Source/DSP/InputActivityDetector.cpp
+        Source/DSP/TransientDetector.cpp
         Source/DSP/PitchDetector.cpp
         Source/DSP/KeyTracker.cpp
         Source/DSP/GenerativeEngine.cpp

@@ -36,6 +36,7 @@ void applyFactoryPreset (juce::AudioProcessorValueTreeState& apvts, const Factor
     setParamRaw (apvts, "delayTaps", (float) v.delayTaps);
     setParamRaw (apvts, "delayTapSpread", v.delayTapSpread);
     setParamRaw (apvts, "outputGlue", v.outputGlue);
+    setParamRaw (apvts, "grainTrigger", v.grainTrigger ? 1.0f : 0.0f);
     setParamRaw (apvts, "tapeAmount", v.tapeAmount);
     setParamRaw (apvts, "outputGainDb", v.outputGainDb);
     setParamRaw (apvts, "manualBpm", v.manualBpm);
@@ -45,7 +46,7 @@ void applyFactoryPreset (juce::AudioProcessorValueTreeState& apvts, const Factor
 const std::vector<FactoryPreset>& getFactoryPresets()
 {
     static const std::vector<FactoryPreset> presets = {
-        // name                sustain root scale unpred  density size  spread sync  div mult genMix chRate chDepth chMix rFast rMix  dTime  dSync dDiv dMult  dFb   dMix  tape  outGain bpm    keyFollow [taps tapSpread]
+        // name                sustain root scale unpred  density size  spread sync  div mult genMix chRate chDepth chMix rFast rMix  dTime  dSync dDiv dMult  dFb   dMix  tape  outGain bpm    keyFollow [taps tapSpread glue trigger]
         { "Init",              { true,  9,   4,    0.18f,  4.5f,  170.0f, 2.0f, false, 3,  2, 0.5f,  0.6f,  0.3f,  0.25f, false, 0.4f, 350.0f, false, 2, 2, 0.35f, 0.3f, 0.0f,  0.0f, 120.0f, true  } },
         { "Gentle Echoes",     { true,  9,   0,    0.10f,  3.0f,  220.0f, 1.5f, false, 3,  2, 0.25f, 0.4f,  0.15f, 0.15f, false, 0.10f, 400.0f, true,  2, 2, 0.30f, 0.28f, 8.0f, 0.0f, 100.0f, false } },
         { "Ghost Choir",       { true,  0,   4,    0.12f,  3.5f,  320.0f, 3.2f, false, 2,  2, 0.75f, 0.3f,  0.6f,  0.4f,  false, 0.50f, 520.0f, false, 2, 2, 0.40f, 0.30f, 15.0f, -2.0f, 90.0f, false, 2, 0.3f } },
@@ -56,6 +57,7 @@ const std::vector<FactoryPreset>& getFactoryPresets()
         { "Space Echo Dub",    { true,  9,   4,    0.15f,  2.5f,  180.0f, 1.8f, false, 3,  2, 0.2f,  0.6f,  0.2f,  0.15f, false, 0.20f, 400.0f, true,  2, 2, 0.60f, 0.45f, 35.0f, -2.0f, 100.0f, false, 3, 0.5f } },
         { "AM Radio Ghost",    { true,  9,   1,    0.20f,  2.0f,  260.0f, 2.2f, false, 3,  2, 0.5f,  0.4f,  0.15f, 0.1f,  false, 0.10f, 350.0f, false, 2, 2, 0.30f, 0.25f, 80.0f, 1.0f, 90.0f, false } },
         { "Rhythmic Pulse",    { true,  9,   4,    0.30f,  6.0f,  120.0f, 1.0f, true,  4,  2, 0.6f,  0.6f,  0.25f, 0.2f,  false, 0.20f, 300.0f, true,  2, 2, 0.35f, 0.30f, 10.0f, 0.0f, 124.0f, false, 4, 0.65f } },
+        { "Drum Bounce",       { true,  9,   4,    0.35f,  6.0f,  90.0f,  1.5f, false, 3,  2, 0.6f,  0.4f,  0.15f, 0.1f,  false, 0.15f, 220.0f, true,  3, 2, 0.30f, 0.30f, 25.0f, 0.0f, 120.0f, false, 3, 0.5f, 25.0f, true } },
 
         // --- Weirder / more experimental ------------------------------------------------------------------------------------------------------------
         { "Broken Radio",      { true,  9,   1,    0.25f,  1.2f,  300.0f, 2.5f, false, 3,  2, 0.55f, 0.3f,  0.1f,  0.1f,  false, 0.05f, 350.0f, false, 2, 2, 0.20f, 0.15f, 95.0f, 2.0f,  90.0f, false  } },

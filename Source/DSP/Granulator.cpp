@@ -66,7 +66,8 @@ void Granulator::spawnGrain (const CircularBuffer& source, GenerativeEngine& gen
 }
 
 void Granulator::process (const CircularBuffer& source, GenerativeEngine& generative,
-                            juce::AudioBuffer<float>& output, int numSamples)
+                            juce::AudioBuffer<float>& output, int numSamples,
+                            bool triggerMode, bool onsetDetectedThisBlock)
 {
     output.clear();
 
@@ -76,17 +77,24 @@ void Granulator::process (const CircularBuffer& source, GenerativeEngine& genera
     // change overall output level: more overlapping grains means each one
     // should contribute less. Deliberately conservative (extra headroom)
     // so dense overlap doesn't push the soft clip below into audibly
-    // squashing things.
+    // squashing things. In trigger mode there's no "grains per second" to
+    // reason about, so just use a flat, ungained-down level.
     float avgOverlap = juce::jmax (1.0f, grainsPerSecond * (grainSizeMs * 0.001f));
-    float outputGain = 0.6f / std::sqrt (avgOverlap + 0.5f);
+    float outputGain = triggerMode ? 0.6f : 0.6f / std::sqrt (avgOverlap + 0.5f);
+
+    if (triggerMode && onsetDetectedThisBlock)
+        spawnGrain (source, generative);
 
     for (int i = 0; i < numSamples; ++i)
     {
-        samplesUntilNextGrain -= 1.0;
-        if (samplesUntilNextGrain <= 0.0)
+        if (! triggerMode)
         {
-            spawnGrain (source, generative);
-            samplesUntilNextGrain += grainIntervalSamples;
+            samplesUntilNextGrain -= 1.0;
+            if (samplesUntilNextGrain <= 0.0)
+            {
+                spawnGrain (source, generative);
+                samplesUntilNextGrain += grainIntervalSamples;
+            }
         }
 
         for (auto& g : grains)

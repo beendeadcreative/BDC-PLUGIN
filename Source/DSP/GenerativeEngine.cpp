@@ -24,7 +24,7 @@ namespace
 
 void GenerativeEngine::reset()
 {
-    pitchDegree = 0;
+    pitchDegree = pitchDegreeCenter;
     positionDegree = 0;
 }
 
@@ -72,7 +72,7 @@ int GenerativeEngine::stepRandomWalk (int current, int minVal, int maxVal, float
 
 float GenerativeEngine::nextPitchRatio()
 {
-    pitchDegree = stepRandomWalk (pitchDegree, -14, 14, unpredictability, random);
+    pitchDegree = stepRandomWalk (pitchDegree, pitchDegreeMin, pitchDegreeMax, unpredictability, random);
     int semitoneOffset = degreeToSemitone (pitchDegree);
     return std::pow (2.0f, (float) semitoneOffset / 12.0f);
 }

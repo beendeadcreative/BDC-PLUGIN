@@ -43,7 +43,17 @@ private:
     Scale scale = Scale::MinorPentatonic;
     float unpredictability = 0.3f;
 
-    int pitchDegree = 0;
+    // The pitch walk is deliberately skewed above the root rather than
+    // centred on it: a symmetric walk spends half its time doubling the
+    // same or a lower register as what's being played, which reads as the
+    // generator "building up underneath" the source. Biasing the range
+    // (and starting there) makes it characteristically sit in a higher
+    // register instead, more like a wash floating over the top.
+    static constexpr int pitchDegreeMin = -3;
+    static constexpr int pitchDegreeMax = 17;
+    static constexpr int pitchDegreeCenter = 7;
+
+    int pitchDegree = pitchDegreeCenter;
     int positionDegree = 0;
 
     juce::Random random { 1 };

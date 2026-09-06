@@ -177,6 +177,16 @@ BDCPluginAudioProcessorEditor::BDCPluginAudioProcessorEditor (BDCPluginAudioProc
     addAndMakeVisible (outputGainSlider);
     outputGainAttachment = std::make_unique<SliderAttachment> (processorRef.apvts, "outputGainDb", outputGainSlider);
 
+    outputGainValueLabel.setJustificationType (juce::Justification::centred);
+    addAndMakeVisible (outputGainValueLabel);
+    if (auto* param = processorRef.apvts.getParameter ("outputGainDb"))
+    {
+        juce::Label* label = &outputGainValueLabel;
+        auto updateText = [label, param] { label->setText (param->getCurrentValueAsText(), juce::dontSendNotification); };
+        outputGainSlider.onValueChange = updateText;
+        updateText();
+    }
+
     setupKnob (tapeKnob, "TAPE", "tapeAmount",
         "Runs the whole mix through emulated cassette 4-track character (Tascam Porta 02 MkII vibe): pitch wobble, dulled top end, saturation, and tape hiss. 0% is clean, 100% is fully lo-fi.");
 
@@ -474,6 +484,7 @@ void BDCPluginAudioProcessorEditor::resized()
     scaleCaption.setFont (SF (kCaptionFontSize));
     rootCaption.setFont (SF (kCaptionFontSize));
     outputGainCaption.setFont (SF (kCaptionFontSize));
+    outputGainValueLabel.setFont (SF (kKnobValueFontSize));
     rotaryFastLabel.setFont (SF (kRotaryLabelFontSize));
 
     for (auto* hb : { &grainBar, &delayBar, &chorusBar, &rotaryBar })
@@ -572,8 +583,14 @@ void BDCPluginAudioProcessorEditor::resized()
     footerDividerX[0] = footer.getRight(); // tone macros | Output
     footer.removeFromRight (S (16) / 2);
 
-    outputGainCaption.setBounds (footer.removeFromLeft (S (90)).withSizeKeepingCentre (S (90), S (24)));
-    outputGainSlider.setBounds (footer.withSizeKeepingCentre (footer.getWidth(), S (24)));
+    auto outputBlock = footer.withSizeKeepingCentre (footer.getWidth(), S (24 + 4 + 13));
+    auto outputRow = outputBlock.removeFromTop (S (24));
+    outputGainCaption.setBounds (outputRow.removeFromLeft (S (90)));
+    outputGainSlider.setBounds (outputRow);
+    const int outputSliderX = outputRow.getX();
+    const int outputSliderWidth = outputRow.getWidth();
+    outputBlock.removeFromTop (S (4));
+    outputGainValueLabel.setBounds (outputSliderX, outputBlock.getY(), outputSliderWidth, outputBlock.getHeight());
 
     // The detail (per-effect fine-tuning knobs) and sync (tempo-sync)
     // strips only take up layout space when Advanced is shown - when it's

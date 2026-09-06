@@ -269,7 +269,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout BDCPluginAudioProcessor::cre
             [] (float v, int) { return String ((int) std::round (v)) + "%"; })));
 
     layout.add (std::make_unique<AudioParameterFloat> (
-        ParameterID { ParamIDs::outputGainDb, 1 }, "Output Gain (dB)", -24.0f, 12.0f, 0.0f));
+        ParameterID { ParamIDs::outputGainDb, 1 }, "Output Gain (dB)",
+        NormalisableRange<float> (-24.0f, 12.0f), 0.0f,
+        AudioParameterFloatAttributes().withStringFromValueFunction (
+            [] (float v, int) { return (v > 0.0f ? "+" : "") + String (v, 1) + " dB"; })));
 
     layout.add (std::make_unique<AudioParameterFloat> (
         ParameterID { ParamIDs::manualBpm, 1 }, "Manual BPM",

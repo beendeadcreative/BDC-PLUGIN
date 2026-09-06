@@ -132,6 +132,7 @@ private:
     juce::Label outputGainCaption;
     juce::Slider outputGainSlider { juce::Slider::LinearBar, juce::Slider::NoTextBox };
     std::unique_ptr<SliderAttachment> outputGainAttachment;
+    juce::Label outputGainValueLabel; // live readout, shown below the slider like the other controls
 
     Knob tapeKnob;
     Knob masterMixKnob;

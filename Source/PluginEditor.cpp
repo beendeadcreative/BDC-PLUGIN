@@ -1,4 +1,21 @@
 #include "PluginEditor.h"
+#include <BinaryData.h>
+
+BDCPluginAudioProcessorEditor::LogoCoverOverlay::LogoCoverOverlay()
+    : image (juce::ImageCache::getFromMemory (BinaryData::BDCLogo_png, BinaryData::BDCLogo_pngSize))
+{
+}
+
+void BDCPluginAudioProcessorEditor::LogoCoverOverlay::paint (juce::Graphics& g)
+{
+    g.fillAll (BDCLookAndFeel::background);
+    g.drawImage (image, getLocalBounds().toFloat(), juce::RectanglePlacement::centred);
+}
+
+void BDCPluginAudioProcessorEditor::LogoCoverOverlay::mouseUp (const juce::MouseEvent&)
+{
+    setVisible (false);
+}
 
 namespace
 {
@@ -9,7 +26,6 @@ namespace
     constexpr int kDesignHeightExpanded = 620;
     constexpr int kDesignHeightCompact = 420; // hero bars + footer only, no detail/sync knobs
 
-    constexpr float kLogoFontSize = 34.0f;
     constexpr float kTunerFontSize = 22.0f;
     constexpr float kCaptionFontSize = 12.0f;
     constexpr float kHeroHeaderFontSize = 15.0f;
@@ -40,10 +56,22 @@ BDCPluginAudioProcessorEditor::BDCPluginAudioProcessorEditor (BDCPluginAudioProc
 {
     setLookAndFeel (&lookAndFeel);
 
-    logoLabel.setText ("BDC", juce::dontSendNotification);
-    logoLabel.setFont (juce::Font (34.0f));
-    logoLabel.setJustificationType (juce::Justification::centredLeft);
-    addAndMakeVisible (logoLabel);
+    {
+        auto logoImage = juce::ImageCache::getFromMemory (BinaryData::BDCLogo_png, BinaryData::BDCLogo_pngSize);
+        logoButton.setImages (false, true, true,
+                               logoImage, 1.0f, {},
+                               logoImage, 1.0f, juce::Colours::white.withAlpha (0.12f),
+                               logoImage, 1.0f, juce::Colours::white.withAlpha (0.22f));
+    }
+    logoButton.setTooltip ("BDC\n\nClick to see the full logo.");
+    logoButton.onClick = [this]
+    {
+        logoOverlay.setVisible (true);
+        logoOverlay.toFront (true);
+    };
+    addAndMakeVisible (logoButton);
+
+    addChildComponent (logoOverlay); // starts hidden; shown full-window when the logo is clicked
 
     presetCaption.setText ("PRESET:", juce::dontSendNotification);
     presetCaption.setFont (juce::Font (12.0f));
@@ -524,7 +552,6 @@ void BDCPluginAudioProcessorEditor::resized()
     auto S  = [scale] (int v)   { return juce::roundToInt ((float) v * scale); };
     auto SF = [scale] (float v) { return juce::Font (v * scale); };
 
-    logoLabel.setFont (SF (kLogoFontSize));
     presetCaption.setFont (SF (kCaptionFontSize));
     tunerLabel.setFont (SF (kTunerFontSize));
     scaleCaption.setFont (SF (kCaptionFontSize));
@@ -553,6 +580,8 @@ void BDCPluginAudioProcessorEditor::resized()
     inputMeterLabel.setFont (SF (kKnobCaptionFontSize));
     outputMeterLabel.setFont (SF (kKnobCaptionFontSize));
 
+    logoOverlay.setBounds (getLocalBounds());
+
     // Input/output meters live in slim columns right at the window edges,
     // outside the margin the rest of the UI is laid out within - carved off
     // first so `area` below is unaffected by their presence either mode.
@@ -571,7 +600,7 @@ void BDCPluginAudioProcessorEditor::resized()
     auto area = windowArea.reduced (S (24));
 
     auto header = area.removeFromTop (S (40));
-    logoLabel.setBounds (header.removeFromLeft (S (180)));
+    logoButton.setBounds (header.removeFromLeft (S (40)));
 
     auto controls = header.removeFromRight (S (362));
     keyFollowButton.setBounds (controls.removeFromRight (S (64)).withSizeKeepingCentre (S (58), S (24)));

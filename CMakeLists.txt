@@ -19,7 +19,7 @@ juce_add_plugin(BDCPlugin
     PLUGIN_MANUFACTURER_CODE Bdcm
     PLUGIN_CODE Bdc1
     FORMATS AU VST3 Standalone
-    PRODUCT_NAME "BDC Plugin"
+    PRODUCT_NAME "BDC"
     IS_SYNTH FALSE
     NEEDS_MIDI_INPUT FALSE
     NEEDS_MIDI_OUTPUT FALSE
@@ -27,14 +27,15 @@ juce_add_plugin(BDCPlugin
     EDITOR_WANTS_KEYBOARD_FOCUS FALSE
     COPY_PLUGIN_AFTER_BUILD TRUE
     MICROPHONE_PERMISSION_ENABLED TRUE
-    MICROPHONE_PERMISSION_TEXT "BDC Plugin needs audio input access to capture what you play."
+    MICROPHONE_PERMISSION_TEXT "BDC needs audio input access to capture what you play."
 )
 
 juce_generate_juce_header(BDCPlugin)
 
-juce_add_binary_data(BDCPluginFonts
+juce_add_binary_data(BDCPluginAssets
     SOURCES
         Resources/TAYLennon-Regular.otf
+        Resources/BDCLogo.png
 )
 
 target_sources(BDCPlugin
@@ -83,7 +84,7 @@ target_link_libraries(BDCPlugin
     PRIVATE
         juce::juce_audio_utils
         juce::juce_dsp
-        BDCPluginFonts
+        BDCPluginAssets
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags

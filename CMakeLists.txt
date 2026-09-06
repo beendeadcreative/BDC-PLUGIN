@@ -64,6 +64,21 @@ target_compile_definitions(BDCPlugin
         JUCE_VST3_CAN_REPLACE_VST2=0
 )
 
+# Standalone-only: our own app shell (Source/StandaloneApp.cpp) swaps which
+# side the title bar's minimise/close and Options buttons sit on. Only the
+# Standalone target needs this - AU/VST3 have no such window, since the
+# host provides its own chrome around the plugin editor.
+if (TARGET BDCPlugin_Standalone)
+    target_sources(BDCPlugin_Standalone
+        PRIVATE
+            Source/StandaloneApp.cpp
+    )
+    target_compile_definitions(BDCPlugin_Standalone
+        PRIVATE
+            JUCE_USE_CUSTOM_PLUGIN_STANDALONE_APP=1
+    )
+endif()
+
 target_link_libraries(BDCPlugin
     PRIVATE
         juce::juce_audio_utils

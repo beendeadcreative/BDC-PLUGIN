@@ -328,7 +328,10 @@ void BDCPluginAudioProcessorEditor::setupHeroBar (HeroBar& hb, const juce::Strin
     hb.valueLabel.setFont (juce::Font (11.0f));
     addAndMakeVisible (hb.valueLabel);
 
-    hb.bar.setTooltip (tooltip);
+    // The knob/bar caption text below is often abbreviated or gets clipped
+    // at small window sizes, so the tooltip leads with the control's full
+    // name on its own line before the description of what it does.
+    hb.bar.setTooltip (labelText + "\n\n" + tooltip);
     addAndMakeVisible (hb.bar);
     hb.attachment = std::make_unique<SliderAttachment> (processorRef.apvts, paramID, hb.bar);
 
@@ -353,7 +356,10 @@ void BDCPluginAudioProcessorEditor::setupKnob (Knob& k, const juce::String& labe
     k.valueLabel.setFont (juce::Font (9.0f));
     addAndMakeVisible (k.valueLabel);
 
-    k.dial.setTooltip (tooltip);
+    // The caption below the dial is often abbreviated (or, at small window
+    // sizes, visually clipped), so the tooltip leads with the control's
+    // full name on its own line before the description of what it does.
+    k.dial.setTooltip (labelText + "\n\n" + tooltip);
     addAndMakeVisible (k.dial);
     k.attachment = std::make_unique<SliderAttachment> (processorRef.apvts, paramID, k.dial);
 

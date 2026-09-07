@@ -600,7 +600,11 @@ void BDCPluginAudioProcessorEditor::resized()
     auto area = windowArea.reduced (S (24));
 
     auto header = area.removeFromTop (S (40));
-    logoButton.setBounds (header.removeFromLeft (S (40)));
+    auto logoSlot = header.removeFromLeft (S (40));
+    // Rendered ~35% larger than the slot it reserves in the header row, so
+    // the mark reads at a more natural size without disturbing the layout
+    // of the scale/root controls to its right.
+    logoButton.setBounds (logoSlot.withSizeKeepingCentre (S (54), S (54)));
 
     auto controls = header.removeFromRight (S (362));
     keyFollowButton.setBounds (controls.removeFromRight (S (64)).withSizeKeepingCentre (S (58), S (24)));

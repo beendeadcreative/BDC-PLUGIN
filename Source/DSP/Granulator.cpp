@@ -16,6 +16,7 @@ void Granulator::reset()
         g.active = false;
 
     samplesUntilNextGrain = 0.0;
+    samplesUntilNewNote = 0.0;
     lowpassState.fill (0.0f);
 }
 
@@ -47,7 +48,23 @@ void Granulator::spawnGrain (const CircularBuffer& source, GenerativeEngine& gen
         return; // grain pool exhausted, drop this one
 
     freeGrain->lengthSamples = juce::jmax (16, (int) (grainSizeMs * 0.001f * (float) sampleRate));
-    freeGrain->pitchRatio = generative.nextPitchRatio();
+
+    if (samplesUntilNewNote <= 0.0)
+    {
+        heldPitchRatio = generative.nextPitchRatio();
+        const float holdSeconds = noteHoldMinSeconds + noteHoldRandom.nextFloat() * (noteHoldMaxSeconds - noteHoldMinSeconds);
+        samplesUntilNewNote = (double) holdSeconds * sampleRate;
+    }
+    freeGrain->pitchRatio = heldPitchRatio;
+
+    // Grains transposed well above unity read as thin/icy; darken those
+    // specifically (grains at or below unity keep the full-bright cutoff)
+    // so the top of the pitch-walk range sounds warm instead of glassy.
+    const float octavesUp = juce::jmax (0.0f, std::log2 ((float) freeGrain->pitchRatio));
+    const float darkenAmount = juce::jlimit (0.0f, 1.0f, octavesUp / 2.5f);
+    const float grainCutoffHz = juce::jmap (darkenAmount, 0.0f, 1.0f, 9000.0f, 3200.0f);
+    freeGrain->lowpassAlpha = 1.0f - std::exp (-2.0f * juce::MathConstants<float>::pi * grainCutoffHz / (float) sampleRate);
+    freeGrain->filterState.fill (0.0f);
 
     float posFraction = generative.nextPositionFraction();
     float maxSamplesAgo = spreadSeconds * (float) sampleRate;
@@ -87,6 +104,8 @@ void Granulator::process (const CircularBuffer& source, GenerativeEngine& genera
 
     for (int i = 0; i < numSamples; ++i)
     {
+        samplesUntilNewNote -= 1.0;
+
         if (! triggerMode)
         {
             samplesUntilNextGrain -= 1.0;
@@ -107,6 +126,10 @@ void Granulator::process (const CircularBuffer& source, GenerativeEngine& genera
             for (int ch = 0; ch < numChannels; ++ch)
             {
                 float sample = source.readAtGlobalIndex (juce::jmin (ch, 1), g.readPos);
+
+                float& grainFilterState = g.filterState[(size_t) juce::jmin (ch, 1)];
+                grainFilterState += g.lowpassAlpha * (sample - grainFilterState);
+                sample = grainFilterState;
 
                 float channelPan = (numChannels <= 1) ? 1.0f
                                   : (ch == 0 ? (1.0f - g.pan) : g.pan);

@@ -41,6 +41,12 @@ private:
         int age = 0;               // samples played so far
         int lengthSamples = 1;
         float pan = 0.5f;
+
+        // Per-grain darkening lowpass - grains pitched well above unity get
+        // a lower cutoff here (set once at spawn, see spawnGrain) so the
+        // upper end of the pitch-walk range reads as warm rather than icy.
+        float lowpassAlpha = 1.0f;
+        std::array<float, 2> filterState { { 0.0f, 0.0f } };
     };
 
     void spawnGrain (const CircularBuffer& source, GenerativeEngine& generative);
@@ -58,6 +64,17 @@ private:
 
     double samplesUntilNextGrain = 0.0;
     juce::Random panRandom { 2 };
+
+    // Grains overlap heavily at normal density, so re-rolling the pitch walk
+    // on every single grain used to mean simultaneous grains would often
+    // disagree on pitch - a smeared, dissonant cluster rather than a clean
+    // note. Instead, a pitch is drawn once and held across a short run of
+    // grains (a "note"), so overlapping grains reinforce each other.
+    static constexpr float noteHoldMinSeconds = 0.15f;
+    static constexpr float noteHoldMaxSeconds = 0.4f;
+    double samplesUntilNewNote = 0.0;
+    double heldPitchRatio = 1.0;
+    juce::Random noteHoldRandom { 3 };
 
     // Gentle one-pole lowpass (tames pitch-shift aliasing/grit) + soft clip
     // (rounds off peaks from dense grain overlap instead of hard-clipping).

@@ -50,7 +50,7 @@ private:
     // (and starting there) makes it characteristically sit in a higher
     // register instead, more like a wash floating over the top.
     static constexpr int pitchDegreeMin = -3;
-    static constexpr int pitchDegreeMax = 17;
+    static constexpr int pitchDegreeMax = 11; // trimmed down from 17: the top of the old range read as thin/icy rather than airy
     static constexpr int pitchDegreeCenter = 7;
 
     int pitchDegree = pitchDegreeCenter;

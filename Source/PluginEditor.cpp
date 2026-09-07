@@ -1,22 +1,6 @@
 #include "PluginEditor.h"
 #include <BinaryData.h>
 
-BDCPluginAudioProcessorEditor::LogoCoverOverlay::LogoCoverOverlay()
-    : image (juce::ImageCache::getFromMemory (BinaryData::BDCLogo_png, BinaryData::BDCLogo_pngSize))
-{
-}
-
-void BDCPluginAudioProcessorEditor::LogoCoverOverlay::paint (juce::Graphics& g)
-{
-    g.fillAll (BDCLookAndFeel::background);
-    g.drawImage (image, getLocalBounds().toFloat(), juce::RectanglePlacement::centred);
-}
-
-void BDCPluginAudioProcessorEditor::LogoCoverOverlay::mouseUp (const juce::MouseEvent&)
-{
-    setVisible (false);
-}
-
 namespace
 {
     // Reference size the whole layout is designed at; resized() scales
@@ -56,22 +40,9 @@ BDCPluginAudioProcessorEditor::BDCPluginAudioProcessorEditor (BDCPluginAudioProc
 {
     setLookAndFeel (&lookAndFeel);
 
-    {
-        auto logoImage = juce::ImageCache::getFromMemory (BinaryData::BDCLogo_png, BinaryData::BDCLogo_pngSize);
-        logoButton.setImages (false, true, true,
-                               logoImage, 1.0f, {},
-                               logoImage, 1.0f, juce::Colours::white.withAlpha (0.12f),
-                               logoImage, 1.0f, juce::Colours::white.withAlpha (0.22f));
-    }
-    logoButton.setTooltip ("BDC\n\nClick to see the full logo.");
-    logoButton.onClick = [this]
-    {
-        logoOverlay.setVisible (true);
-        logoOverlay.toFront (true);
-    };
-    addAndMakeVisible (logoButton);
-
-    addChildComponent (logoOverlay); // starts hidden; shown full-window when the logo is clicked
+    logoImage.setImage (juce::ImageCache::getFromMemory (BinaryData::BDCLogo_png, BinaryData::BDCLogo_pngSize));
+    logoImage.setImagePlacement (juce::RectanglePlacement::centred);
+    addAndMakeVisible (logoImage);
 
     presetCaption.setText ("PRESET:", juce::dontSendNotification);
     presetCaption.setFont (juce::Font (12.0f));
@@ -580,8 +551,6 @@ void BDCPluginAudioProcessorEditor::resized()
     inputMeterLabel.setFont (SF (kKnobCaptionFontSize));
     outputMeterLabel.setFont (SF (kKnobCaptionFontSize));
 
-    logoOverlay.setBounds (getLocalBounds());
-
     // Input/output meters live in slim columns right at the window edges,
     // outside the margin the rest of the UI is laid out within - carved off
     // first so `area` below is unaffected by their presence either mode.
@@ -601,10 +570,13 @@ void BDCPluginAudioProcessorEditor::resized()
 
     auto header = area.removeFromTop (S (40));
     auto logoSlot = header.removeFromLeft (S (40));
-    // Rendered ~35% larger than the slot it reserves in the header row, so
-    // the mark reads at a more natural size without disturbing the layout
-    // of the scale/root controls to its right.
-    logoButton.setBounds (logoSlot.withSizeKeepingCentre (S (54), S (54)));
+    // Rendered well beyond the slot it reserves in the header row so it
+    // reads at a natural size, bleeding into the surrounding whitespace
+    // rather than being confined to the 40px row. Biased to grow mostly
+    // upward (there's more headroom above than the gap below it).
+    const int logoSize = S (70);
+    const int logoTop = juce::jmax (0, header.getY() - S (22));
+    logoImage.setBounds (logoSlot.getX() + (logoSlot.getWidth() - logoSize) / 2, logoTop, logoSize, logoSize);
 
     auto controls = header.removeFromRight (S (362));
     keyFollowButton.setBounds (controls.removeFromRight (S (64)).withSizeKeepingCentre (S (58), S (24)));

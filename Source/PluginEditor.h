@@ -26,19 +26,6 @@ private:
     using ComboBoxAttachment = juce::AudioProcessorValueTreeState::ComboBoxAttachment;
     using ButtonAttachment = juce::AudioProcessorValueTreeState::ButtonAttachment;
 
-    // Shown full-window when the header logo is clicked, like a splash/
-    // cover screen; clicking anywhere on it dismisses it again.
-    class LogoCoverOverlay : public juce::Component
-    {
-    public:
-        LogoCoverOverlay();
-        void paint (juce::Graphics&) override;
-        void mouseUp (const juce::MouseEvent&) override;
-
-    private:
-        juce::Image image;
-    };
-
     struct HeroBar
     {
         juce::Label header;
@@ -108,8 +95,7 @@ private:
     BDCLookAndFeel lookAndFeel;
     juce::TooltipWindow tooltipWindow { this, 400 };
 
-    juce::ImageButton logoButton;
-    LogoCoverOverlay logoOverlay;
+    juce::ImageComponent logoImage;
 
     juce::Label presetCaption;
     juce::ComboBox presetBox;

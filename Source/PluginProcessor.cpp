@@ -361,6 +361,7 @@ void BDCPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     keyTracker.prepare (sampleRate);
     keyTracker.seedRootScale (rootNoteParam->getIndex(), scaleTypeParam->getIndex());
     hasBeenPrimed = false;
+    generativeEngine.prepare (sampleRate);
     generativeEngine.reset();
     granulator.prepare (sampleRate, numChannels, samplesPerBlock);
 
@@ -424,6 +425,7 @@ void BDCPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
     // starts blending in generated/effected material.
     pitchDetector.process (buffer, numSamples);
     keyTracker.update (pitchDetector.isPitchDetected(), pitchDetector.getDetectedFrequencyHz(), numSamples);
+    generativeEngine.updateChroma (pitchDetector.isPitchDetected(), pitchDetector.getDetectedFrequencyHz(), numSamples);
 
     // Key Follow: use the tracked key from what's being played instead of
     // the manual Root/Scale controls.

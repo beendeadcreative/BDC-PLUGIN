@@ -22,10 +22,39 @@ namespace
     }
 }
 
+void GenerativeEngine::prepare (double newSampleRate) noexcept
+{
+    sampleRate = newSampleRate;
+    // Much faster than KeyTracker's ~6s key-sensing half-life - this is
+    // meant to track "what's ringing right now", not settle on a stable key.
+    chromaDecayAlpha = std::pow (0.5f, 1.0f / (float) (1.0 * newSampleRate));
+    chromaWeight.fill (0.0f);
+}
+
 void GenerativeEngine::reset()
 {
     pitchDegree = pitchDegreeCenter;
     positionDegree = 0;
+    chromaWeight.fill (0.0f);
+}
+
+void GenerativeEngine::updateChroma (bool pitchDetected, float frequencyHz, int numSamples) noexcept
+{
+    float blockDecay = std::pow (chromaDecayAlpha, (float) numSamples);
+    for (auto& w : chromaWeight)
+        w *= blockDecay;
+
+    if (pitchDetected && frequencyHz > 0.0f)
+    {
+        float midiFloat = 69.0f + 12.0f * std::log2 (frequencyHz / 440.0f);
+        int pitchClass = ((int) std::round (midiFloat)) % 12;
+        if (pitchClass < 0)
+            pitchClass += 12;
+
+        // Weight by how long this block was, so sustained notes build up
+        // more chroma "gravity" than fleeting ones.
+        chromaWeight[(size_t) pitchClass] += (float) numSamples / (float) sampleRate;
+    }
 }
 
 int GenerativeEngine::degreeToSemitone (int degree) const
@@ -70,9 +99,55 @@ int GenerativeEngine::stepRandomWalk (int current, int minVal, int maxVal, float
     return juce::jlimit (minVal, maxVal, next);
 }
 
+int GenerativeEngine::pitchClassForDegree (int degree) const noexcept
+{
+    int pc = (rootMidiNote + degreeToSemitone (degree)) % 12;
+    if (pc < 0)
+        pc += 12;
+    return pc;
+}
+
+int GenerativeEngine::applyChromaBias (int proposedDegree)
+{
+    // Not enough live signal to say anything meaningful yet (mirrors
+    // KeyTracker's silence-guard) - take the walk's own proposal untouched.
+    float totalChroma = 0.0f;
+    for (auto w : chromaWeight)
+        totalChroma += w;
+    if (totalChroma < 0.05f)
+        return proposedDegree;
+
+    // Weigh the proposed degree against its immediate neighbours rather
+    // than picking freely across the whole range, so this nudges the
+    // walk's own contour toward consonance instead of replacing it.
+    const int candidates[3] { proposedDegree - 1, proposedDegree, proposedDegree + 1 };
+    float weights[3];
+    float weightSum = 0.0f;
+
+    for (int i = 0; i < 3; ++i)
+    {
+        int clamped = juce::jlimit (pitchDegreeMin, pitchDegreeMax, candidates[i]);
+        // A baseline keeps every candidate reachable even where there's no
+        // live chroma energy, so this is a lean rather than a hard lock.
+        weights[i] = 0.15f + chromaWeight[(size_t) pitchClassForDegree (clamped)];
+        weightSum += weights[i];
+    }
+
+    float pick = random.nextFloat() * weightSum;
+    for (int i = 0; i < 3; ++i)
+    {
+        pick -= weights[i];
+        if (pick <= 0.0f)
+            return juce::jlimit (pitchDegreeMin, pitchDegreeMax, candidates[i]);
+    }
+
+    return proposedDegree;
+}
+
 float GenerativeEngine::nextPitchRatio()
 {
-    pitchDegree = stepRandomWalk (pitchDegree, pitchDegreeMin, pitchDegreeMax, unpredictability, random);
+    int proposedDegree = stepRandomWalk (pitchDegree, pitchDegreeMin, pitchDegreeMax, unpredictability, random);
+    pitchDegree = applyChromaBias (proposedDegree);
     int semitoneOffset = degreeToSemitone (pitchDegree);
     return std::pow (2.0f, (float) semitoneOffset / 12.0f);
 }

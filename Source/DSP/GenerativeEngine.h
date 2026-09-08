@@ -6,7 +6,10 @@
 // walk picks the next pitch (so melodies stay in key rather than wandering
 // chromatically), and a second, slower walk picks where in the capture
 // buffer to read from (so it keeps revisiting different moments of what was
-// played instead of always grabbing the newest audio).
+// played instead of always grabbing the newest audio). The pitch walk also
+// leans toward whatever pitch classes are actually ringing right now (see
+// updateChroma()), so it reads as harmonizing with the input in the moment
+// rather than just staying diatonically in key the whole time.
 class GenerativeEngine
 {
 public:
@@ -19,11 +22,20 @@ public:
         MinorPentatonic
     };
 
+    void prepare (double sampleRate) noexcept;
+
     void setRootNote (int midiNoteNumber) noexcept { rootMidiNote = midiNoteNumber; }
     void setScale (Scale newScale) noexcept { scale = newScale; }
 
     // 0 = very stepwise/predictable melodic motion, 1 = frequent large leaps.
     void setUnpredictability (float amount01) noexcept { unpredictability = juce::jlimit (0.0f, 1.0f, amount01); }
+
+    // Call once per block with this block's pitch-detection result (the
+    // same data KeyTracker uses) so the pitch walk can gravitate toward
+    // pitch classes with live energy. Its own histogram decays much faster
+    // than KeyTracker's (~1s vs ~6s): this is meant to track "what's
+    // sounding right now" for the walk to chase, not settle on a stable key.
+    void updateChroma (bool pitchDetected, float frequencyHz, int numSamples) noexcept;
 
     // Called once per spawned grain. Returns a pitch ratio to apply to
     // playback speed (1.0 = no shift) derived from the current scale degree.
@@ -39,9 +51,19 @@ private:
     int degreeToSemitone (int degree) const;
     int stepRandomWalk (int current, int minVal, int maxVal, float leapProbability, juce::Random& rng);
 
+    // Nudges a freshly-proposed pitch degree toward a nearby neighbour with
+    // more live chroma energy, rather than overriding the walk outright -
+    // see updateChroma().
+    int applyChromaBias (int proposedDegree);
+    int pitchClassForDegree (int degree) const noexcept;
+
     int rootMidiNote = 57; // A3
     Scale scale = Scale::MinorPentatonic;
     float unpredictability = 0.3f;
+
+    double sampleRate = 44100.0;
+    float chromaDecayAlpha = 0.0f; // per-sample histogram decay factor
+    std::array<float, 12> chromaWeight {};
 
     // The pitch walk is deliberately skewed above the root rather than
     // centred on it: a symmetric walk spends half its time doubling the

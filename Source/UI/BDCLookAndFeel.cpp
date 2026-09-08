@@ -16,15 +16,22 @@ namespace
     }
 
     // Shrinks a font (by height, in small steps) until the given text fits
-    // within maxWidth, floored at minHeight. Used so labels/buttons/combo
-    // boxes read smaller instead of clipping or relying on JUCE's default
-    // horizontal squish when a control ends up narrower than its text -
-    // e.g. a long scale name in a compact dropdown.
-    juce::Font shrinkFontToFit (juce::Font font, const juce::String& text, float maxWidth, float minHeight = 5.5f)
+    // within maxWidth. Used so labels/buttons/combo boxes read smaller
+    // instead of clipping or relying on JUCE's default horizontal squish
+    // when a control ends up narrower than its text - e.g. a long scale
+    // name in a compact dropdown.
+    //
+    // The floor is a fraction of the font's own starting height rather than
+    // a fixed pixel value, so this shrinks by the same proportion whether
+    // the window is at its full design size or resized down small - a fixed
+    // pixel floor would leave less relative headroom (and so more clipping)
+    // the smaller everything else on screen already is.
+    juce::Font shrinkFontToFit (juce::Font font, const juce::String& text, float maxWidth, float minHeightFraction = 0.4f)
     {
         if (maxWidth <= 0.0f || text.isEmpty())
             return font;
 
+        const float minHeight = juce::jmax (4.0f, font.getHeight() * minHeightFraction);
         while (font.getHeight() > minHeight && juce::GlyphArrangement::getStringWidth (font, text) > maxWidth)
             font.setHeight (font.getHeight() - 0.5f);
 

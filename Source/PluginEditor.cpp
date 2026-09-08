@@ -109,7 +109,7 @@ BDCPluginAudioProcessorEditor::BDCPluginAudioProcessorEditor (BDCPluginAudioProc
     setupHeroBar (rotaryBar, "ROTARY", "rotaryMix",
         "How much of the rotary (Leslie speaker) effect is mixed in.");
 
-    setupKnob (grainDensityKnob, "DENSITY", "grainDensity",
+    setupKnob (grainDensityKnob, "DENS", "grainDensity",
         "How many new notes the generator plays per second. Higher = busier and more granular, lower = sparser and more spacious. "
         "Ignored while TRIGGER is on - each input hit spawns a note instead.");
     setupKnob (grainSizeKnob, "SIZE", "grainSizeMs",
@@ -474,7 +474,12 @@ void BDCPluginAudioProcessorEditor::setAdvancedVisible (bool show)
     if (auto* constrainer = getConstrainer())
         constrainer->setFixedAspectRatio (aspect);
 
-    setResizeLimits (560, juce::roundToInt (560.0 / aspect), 1720, juce::roundToInt (1720.0 / aspect));
+    // 560 used to be the floor here, but the detail strip's densest cluster
+    // (4 knobs + a toggle button, each with a caption and value readout)
+    // has no comfortable amount of text left to shrink to below about 640 -
+    // narrower than that and captions start losing characters no matter
+    // how small the font gets.
+    setResizeLimits (640, juce::roundToInt (640.0 / aspect), 1720, juce::roundToInt (1720.0 / aspect));
     setSize (getWidth(), juce::roundToInt ((double) getWidth() / aspect));
 }
 
@@ -581,7 +586,10 @@ void BDCPluginAudioProcessorEditor::resized()
     auto controls = header.removeFromRight (S (362));
     keyFollowButton.setBounds (controls.removeFromRight (S (64)).withSizeKeepingCentre (S (58), S (24)));
     controls.removeFromRight (S (6));
-    auto scaleRow = controls.removeFromLeft (S (148));
+    // Root only ever needs to fit 1-2 characters ("A", "C#"...) - give Scale
+    // the lion's share of the width instead of splitting evenly, since it
+    // has to fit names as long as "Minor Pentatonic".
+    auto scaleRow = controls.removeFromLeft (S (190));
     scaleCaption.setBounds (scaleRow.removeFromLeft (S (56)));
     scaleBox.setBounds (scaleRow);
     auto rootRow = controls;
@@ -753,7 +761,10 @@ void BDCPluginAudioProcessorEditor::resized()
             auto row = slot.withSizeKeepingCentre (slot.getWidth(), S (28));
             s.syncButton.setBounds (row.removeFromLeft (S (50)));
             row.removeFromLeft (S (4));
-            s.multiplierBox.setBounds (row.removeFromRight (S (50)));
+            // Multiplier only ever shows 2 characters ("/4", "x2"...) -
+            // division needs room for names like "1/16T", so it gets the
+            // width multiplier doesn't need.
+            s.multiplierBox.setBounds (row.removeFromRight (S (34)));
             row.removeFromRight (S (4));
             s.divisionBox.setBounds (row);
         };

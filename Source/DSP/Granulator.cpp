@@ -92,12 +92,15 @@ void Granulator::process (const CircularBuffer& source, GenerativeEngine& genera
 
     // Rough loudness compensation so density/size changes don't wildly
     // change overall output level: more overlapping grains means each one
-    // should contribute less. Deliberately conservative (extra headroom)
-    // so dense overlap doesn't push the soft clip below into audibly
-    // squashing things. In trigger mode there's no "grains per second" to
-    // reason about, so just use a flat, ungained-down level.
+    // should contribute less. Tuned to sit close to unity at everyday
+    // density/size settings (where grains rarely overlap much) and only
+    // back off once overlap actually gets dense - the soft clip below still
+    // rounds off occasional constructive-interference peaks gracefully, so
+    // this doesn't need to stay as conservative as flatly halving
+    // everything. In trigger mode there's no "grains per second" to reason
+    // about, so just use a flat, mildly-reduced level.
     float avgOverlap = juce::jmax (1.0f, grainsPerSecond * (grainSizeMs * 0.001f));
-    float outputGain = triggerMode ? 0.6f : 0.6f / std::sqrt (avgOverlap + 0.5f);
+    float outputGain = triggerMode ? 0.85f : 0.9f / std::sqrt (avgOverlap);
 
     if (triggerMode && onsetDetectedThisBlock)
         spawnGrain (source, generative);

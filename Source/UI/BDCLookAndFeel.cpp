@@ -14,6 +14,22 @@ namespace
             BinaryData::TAYLennonRegular_otf, (size_t) BinaryData::TAYLennonRegular_otfSize);
         return typeface;
     }
+
+    // Shrinks a font (by height, in small steps) until the given text fits
+    // within maxWidth, floored at minHeight. Used so labels/buttons/combo
+    // boxes read smaller instead of clipping or relying on JUCE's default
+    // horizontal squish when a control ends up narrower than its text -
+    // e.g. a long scale name in a compact dropdown.
+    juce::Font shrinkFontToFit (juce::Font font, const juce::String& text, float maxWidth, float minHeight = 5.5f)
+    {
+        if (maxWidth <= 0.0f || text.isEmpty())
+            return font;
+
+        while (font.getHeight() > minHeight && juce::GlyphArrangement::getStringWidth (font, text) > maxWidth)
+            font.setHeight (font.getHeight() - 0.5f);
+
+        return font;
+    }
 }
 
 juce::Font BDCLookAndFeel::trackedFont (float height, bool bold)
@@ -130,17 +146,25 @@ void BDCLookAndFeel::drawButtonBackground (juce::Graphics& g, juce::Button& butt
 
 juce::Font BDCLookAndFeel::getComboBoxFont (juce::ComboBox& box)
 {
-    return trackedFont (juce::jmin (16.0f, (float) box.getHeight() * 0.6f));
+    auto font = trackedFont (juce::jmin (16.0f, (float) box.getHeight() * 0.6f));
+    // Matches LookAndFeel_V2::positionComboBoxText's own text-area math (the
+    // box's width minus a height-sized area reserved for the arrow button).
+    const float availableWidth = (float) box.getWidth() - (float) box.getHeight() - 4.0f;
+    return shrinkFontToFit (font, box.getText(), availableWidth);
 }
 
-juce::Font BDCLookAndFeel::getTextButtonFont (juce::TextButton&, int buttonHeight)
+juce::Font BDCLookAndFeel::getTextButtonFont (juce::TextButton& button, int buttonHeight)
 {
-    return trackedFont (juce::jmin (15.0f, (float) buttonHeight * 0.55f));
+    auto font = trackedFont (juce::jmin (15.0f, (float) buttonHeight * 0.55f));
+    const float availableWidth = (float) button.getWidth() - 10.0f;
+    return shrinkFontToFit (font, button.getButtonText(), availableWidth);
 }
 
 juce::Font BDCLookAndFeel::getLabelFont (juce::Label& label)
 {
-    return trackedFont (label.getFont().getHeight());
+    auto font = trackedFont (label.getFont().getHeight());
+    const float availableWidth = (float) label.getWidth() - 4.0f;
+    return shrinkFontToFit (font, label.getText(), availableWidth);
 }
 
 juce::Font BDCLookAndFeel::getPopupMenuFont()

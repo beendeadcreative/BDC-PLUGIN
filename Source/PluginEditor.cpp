@@ -119,7 +119,7 @@ BDCPluginAudioProcessorEditor::BDCPluginAudioProcessorEditor (BDCPluginAudioProc
     setupKnob (unpredictabilityKnob, "CHAOS", "unpredictability",
         "How often the generated melody takes a big jump instead of moving stepwise. Higher = more unpredictable and adventurous.");
 
-    grainTriggerLabel.setText ("TRIGGER", juce::dontSendNotification);
+    grainTriggerLabel.setText ("MODE", juce::dontSendNotification); // matches the SPEED/FAST pattern below - see the button/tooltip for what TRIG means
     grainTriggerLabel.setJustificationType (juce::Justification::centred);
     grainTriggerLabel.setFont (juce::Font (10.0f));
     addAndMakeVisible (grainTriggerLabel);
@@ -152,7 +152,7 @@ BDCPluginAudioProcessorEditor::BDCPluginAudioProcessorEditor (BDCPluginAudioProc
 
     setupKnob (delayTimeKnob, "TIME", "delayTimeMs",
         "Time between echoes, in milliseconds.");
-    setupKnob (delayFeedbackKnob, "FEEDBACK", "delayFeedback",
+    setupKnob (delayFeedbackKnob, "FEED", "delayFeedback",
         "How much of each echo feeds back into the next one. Higher = repeats for longer.");
     setupKnob (delayTapsKnob, "TAPS", "delayTaps",
         "Number of echoes per repeat, read off the same delay line like the multiple heads on a real tape echo. "
@@ -162,7 +162,7 @@ BDCPluginAudioProcessorEditor::BDCPluginAudioProcessorEditor (BDCPluginAudioProc
         "Spaces and pans the extra echo taps (when Taps is above 1) alternately left/right for a wider, more "
         "rhythmic texture. Has no effect with only 1 tap, or while REVERSE is on.");
 
-    delayReverseLabel.setText ("REVERSE", juce::dontSendNotification);
+    delayReverseLabel.setText ("DIR", juce::dontSendNotification); // matches the SPEED/FAST pattern above - see the button/tooltip for what REV means
     delayReverseLabel.setJustificationType (juce::Justification::centred);
     delayReverseLabel.setFont (juce::Font (10.0f));
     addAndMakeVisible (delayReverseLabel);
